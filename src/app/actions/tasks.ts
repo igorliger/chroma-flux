@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -7,7 +8,14 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/queries";
 import type { TaskBoardStatus, TaskUpdate } from "@/lib/database.types";
 
-export type ActionState = { error?: string; success?: string };
+export type ActionState = {
+  error?: string;
+  success?: string;
+  /** Id da tarefa recém-criada — a janela de criação envia os anexos para ela. */
+  taskId?: string;
+  /** Tarefa criada, mas algum extra (subtarefa, comentário) não entrou. */
+  warning?: string;
+};
 
 const uuid = z.string().uuid();
 const optionalUuid = z
@@ -180,7 +188,12 @@ export async function createTaskAction(
   const user = await requireUser();
   const supabase = await createClient();
 
+  // O id nasce aqui para as subtarefas, o comentário e os anexos poderem
+  // apontar para a tarefa logo em seguida, sem depender de RETURNING.
+  const taskId = randomUUID();
+
   const { error } = await supabase.from("tasks").insert({
+    id: taskId,
     workspace_id: parsed.data.workspaceId,
     parent_task_id: parsed.data.parentTaskId,
     title: parsed.data.title,
@@ -205,8 +218,46 @@ export async function createTaskAction(
 
   if (error) return { error: friendlyError(error.code, error.message) };
 
+  // Extras preenchidos já na criação. A tarefa já existe: se algum deles
+  // falhar, ela continua criada e a janela avisa o que não entrou.
+  const avisos: string[] = [];
+
+  const subtarefas = formData
+    .getAll("subtasks")
+    .map((v) => String(v).trim().slice(0, 300))
+    .filter(Boolean)
+    .slice(0, 30);
+  if (subtarefas.length > 0) {
+    const { error: erroSub } = await supabase.from("tasks").insert(
+      subtarefas.map((title, i) => ({
+        workspace_id: parsed.data.workspaceId,
+        parent_task_id: taskId,
+        title,
+        created_by: user.id,
+        is_personal: parsed.data.isPersonal,
+        position: (i + 1) * 1000,
+      })),
+    );
+    if (erroSub) avisos.push("as subtarefas não puderam ser criadas");
+  }
+
+  const comentario = String(formData.get("comment") ?? "").trim().slice(0, 10000);
+  if (comentario) {
+    const { error: erroComentario } = await supabase.from("comments").insert({
+      workspace_id: parsed.data.workspaceId,
+      task_id: taskId,
+      author_id: user.id,
+      body: comentario,
+    });
+    if (erroComentario) avisos.push("o comentário não pôde ser salvo");
+  }
+
   revalidateTasks(parsed.data.workspaceId);
-  return { success: "Tarefa criada." };
+  return {
+    success: "Tarefa criada.",
+    taskId,
+    warning: avisos.length ? `Tarefa criada, mas ${avisos.join(" e ")}.` : undefined,
+  };
 }
 
 // ---------------------------------------------------------------------------
