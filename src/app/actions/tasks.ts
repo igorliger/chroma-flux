@@ -81,10 +81,21 @@ const dueDate = z
   .transform((v) => (v ? v : null))
   .nullable();
 
-/** "HH:MM" — a grade da interface é de meia em meia hora. */
+/**
+ * "HH:MM" — a grade da interface é de meia em meia hora.
+ *
+ * Aceita também "HH:MM:SS": é assim que o Postgres devolve a coluna `time`,
+ * e a hora volta para o servidor nesse formato sempre que só a data ou a
+ * repetição muda. Sem isso, trocar a repetição de uma tarefa com hora dava
+ * "Hora inválida." e não salvava nada.
+ */
 const dueTime = z
-  .union([z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Hora inválida."), z.literal(""), z.null()])
-  .transform((v) => (v ? v : null));
+  .union([
+    z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/, "Hora inválida."),
+    z.literal(""),
+    z.null(),
+  ])
+  .transform((v) => (v ? v.slice(0, 5) : null));
 
 /** Telas que mostram tarefas do espaço. */
 function revalidateTasks(workspaceId: string) {
