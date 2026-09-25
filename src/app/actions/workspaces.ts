@@ -161,11 +161,13 @@ export async function inviteMemberAction(
     };
   }
 
-  // Sem envio (chave não configurada, ou falha do provedor): mesma mensagem
-  // de antes, para o convite continuar utilizável mesmo sem e-mail.
+  // Sem envio: o convite continua valendo (aparece quando a pessoa entrar
+  // com esse e-mail), mas quem convidou precisa saber que o e-mail não saiu
+  // — e por quê, senão fica esperando uma mensagem que nunca vai chegar.
   return {
     success:
-      `Convite registrado para ${parsed.data.email}. ` +
+      `Convite registrado para ${parsed.data.email}, mas o e-mail não pôde ser enviado ` +
+      `(${emailResult.error ?? "motivo desconhecido"}). ` +
       `A pessoa verá o convite ao entrar no Chroma Flux com esse e-mail.`,
   };
 }

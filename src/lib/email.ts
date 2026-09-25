@@ -12,7 +12,9 @@ import { getSiteUrl } from "@/lib/env";
  * no Chroma Flux com aquele e-mail.
  */
 function getResendClient(): Resend | null {
-  const key = process.env.RESEND_API_KEY;
+  // `trim()`: ao colar a chave no painel da Vercel é comum vir junto um
+  // espaço ou quebra de linha — o Resend recusaria a chave inteira por isso.
+  const key = process.env.RESEND_API_KEY?.trim();
   if (!key) return null;
   return new Resend(key);
 }
@@ -43,12 +45,17 @@ export async function sendWorkspaceInviteEmail(params: {
   roleLabel: string;
 }): Promise<SendInviteEmailResult> {
   const resend = getResendClient();
-  if (!resend) return { sent: false, error: "RESEND_API_KEY não configurada." };
+  if (!resend) {
+    console.error("[convite] e-mail não enviado: RESEND_API_KEY não configurada.");
+    return { sent: false, error: "chave do Resend não configurada no servidor" };
+  }
 
   const siteUrl = getSiteUrl();
   const { to, workspaceName, inviterName, roleLabel } = params;
 
-  const { error } = await resend.emails.send({
+  let error: { message: string; name?: string } | null = null;
+  try {
+    ({ error } = await resend.emails.send({
     from: getFromAddress(),
     to,
     subject: `${inviterName} convidou você para o espaço "${workspaceName}" no Chroma Flux`,
@@ -74,8 +81,18 @@ export async function sendWorkspaceInviteEmail(params: {
         </p>
       </div>
     `,
-  });
+    }));
+  } catch (e) {
+    // Falha antes da resposta (rede, cabeçalho inválido): sem isto, a exceção
+    // derrubaria a action inteira depois de o convite já ter sido gravado.
+    error = { message: e instanceof Error ? e.message : String(e) };
+  }
 
-  if (error) return { sent: false, error: error.message };
+  if (error) {
+    // Aparece em Logs na Vercel — é o único lugar onde dá para ver o motivo
+    // real sem acesso ao servidor.
+    console.error("[convite] Resend recusou o envio:", error.name ?? "", error.message);
+    return { sent: false, error: error.message };
+  }
   return { sent: true };
 }
