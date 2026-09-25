@@ -200,6 +200,14 @@ export function TaskBrowser({
       {modoSelecao && (
         <BulkActionBar
           count={selecionadas.size}
+          total={visibleTasks.length}
+          onToggleAll={() =>
+            setSelecionadas((atual) =>
+              visibleTasks.length > 0 && visibleTasks.every((t) => atual.has(t.id))
+                ? new Set()
+                : new Set(visibleTasks.map((t) => t.id)),
+            )
+          }
           canEdit={permissoes.edit || permissoes.complete}
           canDelete={permissoes.delete}
           pending={bulkPending}

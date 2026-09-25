@@ -173,6 +173,14 @@ export function KanbanBoard({
       {modoSelecao && (
         <BulkActionBar
           count={selecionadas.size}
+          total={optimisticTasks.length}
+          onToggleAll={() =>
+            setSelecionadas((atual) =>
+              optimisticTasks.length > 0 && optimisticTasks.every((t) => atual.has(t.id))
+                ? new Set()
+                : new Set(optimisticTasks.map((t) => t.id)),
+            )
+          }
           canEdit={permissoes.edit || permissoes.complete}
           canDelete={permissoes.delete}
           pending={bulkPending}

@@ -15,6 +15,8 @@ import { Button, Modal } from "@/components/ui";
  */
 export function BulkActionBar({
   count,
+  total,
+  onToggleAll,
   canEdit,
   canDelete,
   onComplete,
@@ -24,6 +26,10 @@ export function BulkActionBar({
   pending = false,
 }: {
   count: number;
+  /** Quantas tarefas estão visíveis agora — base do "Selecionar todas". */
+  total?: number;
+  /** Marca todas as visíveis, ou desmarca todas se já estiverem marcadas. */
+  onToggleAll?: () => void;
   canEdit: boolean;
   canDelete: boolean;
   onComplete?: () => void;
@@ -34,10 +40,30 @@ export function BulkActionBar({
 }) {
   const [confirmando, setConfirmando] = useState(false);
   const semSelecao = count === 0;
+  const todasMarcadas = total !== undefined && total > 0 && count >= total;
+  const algumasMarcadas = !semSelecao && !todasMarcadas;
 
   return (
     <>
       <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-900">
+        {onToggleAll && total !== undefined && total > 0 && (
+          <label className="flex cursor-pointer items-center gap-2 font-medium">
+            <input
+              type="checkbox"
+              className="size-4 cursor-pointer accent-brand-600"
+              checked={todasMarcadas}
+              ref={(el) => {
+                // Estado "parcial" (traço) quando só algumas estão marcadas.
+                if (el) el.indeterminate = algumasMarcadas;
+              }}
+              onChange={onToggleAll}
+              disabled={pending}
+              aria-label={todasMarcadas ? "Desmarcar todas" : "Selecionar todas"}
+            />
+            {todasMarcadas ? "Desmarcar todas" : "Selecionar todas"}
+          </label>
+        )}
+
         <span className="font-medium">
           {semSelecao
             ? "Toque nas tarefas para selecionar"
