@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BarChart3,
   CheckSquare,
   LayoutDashboard,
   LayoutGrid,
@@ -63,6 +64,10 @@ export function WorkspacesShell({
       grupos={[
         {
           itens: [
+            // Visão de todos os espaços juntos: só para quem é dono de algum.
+            ...(workspaces.some((w) => w.role === "owner")
+              ? [{ href: "/dashboard", label: "Dashboard", icon: BarChart3, exact: true }]
+              : []),
             { href: "/espacos", label: "Espaços de trabalho", icon: LayoutGrid, exact: true },
             {
               href: "/minhas-tarefas",

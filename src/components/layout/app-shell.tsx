@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BarChart3,
   Calendar,
   CheckSquare,
   LayoutDashboard,
@@ -73,6 +74,9 @@ export function AppShell({
         {
           rotulo: "Você",
           itens: [
+            ...(workspaces.some((w) => w.role === "owner")
+              ? [{ href: "/dashboard", label: "Dashboard", icon: BarChart3, exact: true }]
+              : []),
             { href: "/minhas-tarefas", label: "Minhas tarefas", icon: CheckSquare, exact: true },
           ],
         },

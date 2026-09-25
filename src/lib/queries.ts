@@ -1029,3 +1029,59 @@ export async function canICreateWorkspace(): Promise<boolean> {
   if (error) return false;
   return data === true;
 }
+
+export type OwnerDashboardData = {
+  workspaces: { id: string; name: string; color: string }[];
+  /** Abertas + concluídas nos últimos 7 dias, de todos os espaços do dono. */
+  tasks: TaskOverview[];
+  people: PersonRef[];
+};
+
+/**
+ * Dados do Dashboard do proprietário: tudo o que está em aberto em todos os
+ * espaços de que a pessoa é dona, mais o que foi concluído na última semana
+ * (para medir o ritmo). Tarefas particulares ficam de fora — são de quem as
+ * criou. Subtarefas também: o resumo é por tarefa.
+ */
+export async function getOwnerDashboard(): Promise<OwnerDashboardData> {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  const { data: espacos } = await supabase
+    .from("workspaces")
+    .select("id, name, color")
+    .eq("owner_id", user.id)
+    .order("name");
+  const workspaces = espacos ?? [];
+  if (workspaces.length === 0) return { workspaces, tasks: [], people: [] };
+
+  const ids = workspaces.map((w) => w.id);
+  const semanaPassada = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [{ data: tarefas }, { data: equipe }] = await Promise.all([
+    supabase
+      .from("task_overview")
+      .select("*")
+      .in("workspace_id", ids)
+      .is("parent_task_id", null)
+      .eq("is_personal", false)
+      .or(`is_completed.eq.false,completed_at.gte.${semanaPassada}`)
+      .order("due_date", { ascending: true, nullsFirst: false })
+      .limit(3000),
+    supabase.from("team_members").select("user_id").eq("owner_id", user.id),
+  ]);
+
+  const pessoasIds = [user.id, ...(equipe ?? []).map((m) => m.user_id)];
+  const { data: perfis } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, avatar_url")
+    .in("id", pessoasIds);
+
+  return {
+    workspaces,
+    tasks: (tarefas ?? []) as TaskOverview[],
+    people: ((perfis ?? []) as PersonRef[]).sort((a, b) =>
+      (a.full_name ?? "").localeCompare(b.full_name ?? "", "pt-BR"),
+    ),
+  };
+}
