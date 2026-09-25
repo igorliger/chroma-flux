@@ -8,6 +8,8 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/queries";
+import { sendWorkspaceInviteEmail } from "@/lib/email";
+import { roleLabel } from "@/lib/utils";
 
 export type ActionState = { error?: string; success?: string };
 
@@ -136,6 +138,31 @@ export async function inviteMemberAction(
   }
 
   revalidatePath(`/e/${parsed.data.workspaceId}/membros`);
+
+  // O convite já está registrado mesmo se o e-mail falhar — ele aparece do
+  // mesmo jeito quando a pessoa entra no Chroma Flux com aquele endereço.
+  // Por isso as duas buscas abaixo (nome do espaço, nome de quem convidou)
+  // rodam best-effort: um erro aqui não deve desfazer o convite já salvo.
+  const [{ data: workspace }, { data: perfil }] = await Promise.all([
+    supabase.from("workspaces").select("name").eq("id", parsed.data.workspaceId).maybeSingle(),
+    supabase.from("profiles").select("full_name, email").eq("id", user.id).maybeSingle(),
+  ]);
+
+  const emailResult = await sendWorkspaceInviteEmail({
+    to: parsed.data.email,
+    workspaceName: workspace?.name ?? "Chroma Flux",
+    inviterName: perfil?.full_name || perfil?.email || "Alguém",
+    roleLabel: roleLabel(parsed.data.role),
+  });
+
+  if (emailResult.sent) {
+    return {
+      success: `Convite enviado por e-mail para ${parsed.data.email}.`,
+    };
+  }
+
+  // Sem envio (chave não configurada, ou falha do provedor): mesma mensagem
+  // de antes, para o convite continuar utilizável mesmo sem e-mail.
   return {
     success:
       `Convite registrado para ${parsed.data.email}. ` +

@@ -1,0 +1,83 @@
+import { Resend } from "resend";
+
+import { getSiteUrl } from "@/lib/env";
+
+/**
+ * Envio de e-mails transacionais (hoje só o convite de espaço de trabalho).
+ *
+ * Sem `RESEND_API_KEY` configurada, o convite continua sendo registrado no
+ * banco normalmente — só o e-mail não sai. Isso evita que quem ainda não
+ * configurou o Resend fique impedido de convidar gente: a pessoa convidada
+ * só não recebe aviso, mas o convite aparece do mesmo jeito quando ela entra
+ * no Chroma Flux com aquele e-mail.
+ */
+function getResendClient(): Resend | null {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  return new Resend(key);
+}
+
+/**
+ * Remetente do e-mail. Sem `RESEND_FROM_EMAIL` configurada, usa o domínio de
+ * testes do Resend (`onboarding@resend.dev`) — funciona para enviar, mas só
+ * chega à caixa de quem cadastrou a conta Resend. Para enviar a qualquer
+ * pessoa, é preciso verificar um domínio próprio no painel do Resend e
+ * configurar `RESEND_FROM_EMAIL` com um endereço desse domínio.
+ */
+function getFromAddress(): string {
+  return process.env.RESEND_FROM_EMAIL || "Chroma Flux <onboarding@resend.dev>";
+}
+
+export type SendInviteEmailResult = { sent: boolean; error?: string };
+
+/**
+ * Envia o e-mail de convite para um espaço de trabalho.
+ *
+ * O link aponta para a raiz do site: não existe token de convite por link —
+ * o convite é resolvido pelo e-mail da conta, então basta a pessoa entrar (ou
+ * se cadastrar) no Chroma Flux com este mesmo endereço para vê-lo em
+ * "Espaços de trabalho".
+ */
+export async function sendWorkspaceInviteEmail(params: {
+  to: string;
+  workspaceName: string;
+  inviterName: string;
+  roleLabel: string;
+}): Promise<SendInviteEmailResult> {
+  const resend = getResendClient();
+  if (!resend) return { sent: false, error: "RESEND_API_KEY não configurada." };
+
+  const siteUrl = getSiteUrl();
+  const { to, workspaceName, inviterName, roleLabel } = params;
+
+  const { error } = await resend.emails.send({
+    from: getFromAddress(),
+    to,
+    subject: `${inviterName} convidou você para o espaço "${workspaceName}" no Chroma Flux`,
+    html: `
+      <div style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 480px; margin: 0 auto; color: #1f2530;">
+        <h1 style="font-size: 20px; margin-bottom: 8px;">Você foi convidado para o Chroma Flux</h1>
+        <p style="font-size: 14px; line-height: 1.6; color: #4b5566;">
+          <strong>${inviterName}</strong> convidou você para participar do espaço de trabalho
+          <strong>${workspaceName}</strong> como <strong>${roleLabel}</strong>.
+        </p>
+        <p style="font-size: 14px; line-height: 1.6; color: #4b5566;">
+          Entre (ou crie sua conta) no Chroma Flux com o e-mail <strong>${to}</strong> para
+          ver e aceitar o convite.
+        </p>
+        <a
+          href="${siteUrl}/espacos"
+          style="display: inline-block; margin-top: 16px; padding: 10px 20px; background: #7c5cff; color: #fff; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 600;"
+        >
+          Abrir Chroma Flux
+        </a>
+        <p style="font-size: 12px; color: #9aa2b1; margin-top: 24px;">
+          Se você não esperava este convite, pode ignorar este e-mail.
+        </p>
+      </div>
+    `,
+  });
+
+  if (error) return { sent: false, error: error.message };
+  return { sent: true };
+}
