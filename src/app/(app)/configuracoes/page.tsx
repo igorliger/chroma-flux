@@ -5,7 +5,6 @@ import { signOutAction } from "@/app/actions/auth";
 import { WorkspacesShell } from "@/components/layout/workspaces-shell";
 import { Card } from "@/components/ui";
 import {
-  getMyAccessWindow,
   getMyPermissionMatrix,
   getMyProfile,
   listMyAccessGroups,
@@ -16,7 +15,6 @@ import {
 import { canAdminister } from "@/lib/utils";
 
 import { AccessGroupsPanel } from "./access-groups-panel";
-import { AccessWindowForm } from "./access-window-form";
 import { PermissionsMatrix } from "./permissions-matrix";
 import { ProfileForm } from "./profile-form";
 
@@ -32,11 +30,10 @@ export const metadata: Metadata = { title: "Configurações" };
 export default async function ConfiguracoesPage() {
   const user = await requireUser();
 
-  const [perfil, workspaces, matriz, janela, grupos, membrosDaEquipe] = await Promise.all([
+  const [perfil, workspaces, matriz, grupos, membrosDaEquipe] = await Promise.all([
     getMyProfile(),
     listWorkspaces(user.id),
     getMyPermissionMatrix(),
-    getMyAccessWindow(),
     listMyAccessGroups(),
     listMyTeamMembers(user.id),
   ]);
@@ -122,24 +119,12 @@ export default async function ConfiguracoesPage() {
             </Card>
 
             <Card className="mt-6">
-              <h2 className="font-semibold text-ink-900">Janela de uso</h2>
-              <p className="mb-4 mt-1 text-sm text-ink-500">
-                Restringe os dias e horários em que a equipe pode trabalhar nos
-                seus espaços. Como as permissões, a regra vale no banco de
-                dados. Vale para quem não estiver em nenhum grupo abaixo.
-              </p>
-              <AccessWindowForm
-                inicial={janela}
-                totalEspacos={meusEspacos.length}
-              />
-            </Card>
-
-            <Card className="mt-6">
               <h2 className="font-semibold text-ink-900">Grupos de acesso</h2>
               <p className="mb-4 mt-1 text-sm text-ink-500">
-                Crie grupos com sua própria janela de uso — por exemplo, uma
-                equipe com horário diferente do resto. Quem está num grupo
-                segue a janela dele em vez da pessoal.
+                Restringe os dias e horários em que um grupo de membros pode
+                trabalhar nos seus espaços. Como as permissões, a regra vale no
+                banco de dados. Quem não estiver em nenhum grupo não tem
+                restrição de horário.
               </p>
               <AccessGroupsPanel grupos={grupos} membros={membrosDaEquipe} />
             </Card>

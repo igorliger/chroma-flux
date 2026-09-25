@@ -408,7 +408,9 @@ export type AccessGroup = AccessWindow & {
 /**
  * Grupos de acesso do proprietário, cada um com a própria janela e os
  * membros que estão nele. Quem não aparece em `memberIds` de nenhum grupo
- * segue a janela pessoal (`getMyAccessWindow`).
+ * não tem restrição de horário — a janela pessoal (`user_access_windows`)
+ * ainda existe no banco como fallback de `within_access_window`, mas não tem
+ * mais tela própria; só os grupos são editáveis pela interface.
  */
 export async function listMyAccessGroups(): Promise<AccessGroup[]> {
   const user = await requireUser();
