@@ -8,6 +8,7 @@ import {
   getMyPermissionMatrix,
   getMyProfile,
   listMyAccessGroups,
+  listMyInvitees,
   listMyTeamMembers,
   listWorkspaces,
   requireUser,
@@ -17,6 +18,7 @@ import { canAdminister } from "@/lib/utils";
 import { NotificationSettings } from "@/components/notifications/notification-settings";
 
 import { AccessGroupsPanel } from "./access-groups-panel";
+import { InviteesPanel } from "./invitees-panel";
 import { PermissionsMatrix } from "./permissions-matrix";
 import { ProfileForm } from "./profile-form";
 
@@ -51,6 +53,13 @@ export default async function ConfiguracoesPage() {
     O perfil continua, que é a razão de a tela existir para todo mundo.
   */
   const mandaEmAlgumEspaco = workspaces.some((w) => canAdminister(w.role));
+
+  const convidados = await listMyInvitees(
+    workspaces.filter((w) => canAdminister(w.role)).map((w) => ({ id: w.id, name: w.name })),
+  );
+
+  // Só o booleano sai do servidor — nunca o valor da chave.
+  const emailConfigurado = Boolean(process.env.RESEND_API_KEY?.trim());
 
   return (
     <WorkspacesShell
@@ -101,6 +110,26 @@ export default async function ConfiguracoesPage() {
 
         {mandaEmAlgumEspaco && (
           <>
+            <Card className="mt-6">
+              <h2 className="font-semibold text-ink-900">Convidados e funções</h2>
+              <p className="mt-1 text-sm text-ink-500">
+                Todas as pessoas dos espaços que você administra, e os convites que
+                ainda não foram aceitos. Troque a função de cada uma aqui.
+              </p>
+              <p
+                className={
+                  emailConfigurado
+                    ? "mb-4 mt-3 rounded-lg bg-ok-bg px-3 py-2 text-xs text-ok-fg"
+                    : "mb-4 mt-3 rounded-lg bg-warn-bg px-3 py-2 text-xs text-warn-fg"
+                }
+              >
+                {emailConfigurado
+                  ? "Envio de convites por e-mail: ativo no servidor."
+                  : "Envio de convites por e-mail: a chave do Resend (RESEND_API_KEY) não está chegando ao servidor — os convites ficam registrados, mas nenhum e-mail sai."}
+              </p>
+              <InviteesPanel espacos={convidados} />
+            </Card>
+
             <Card className="mt-6">
               <h2 className="font-semibold text-ink-900">
                 Permissões por papel

@@ -296,6 +296,78 @@ export async function listMembers(workspaceId: string): Promise<MemberWithProfil
  * valem para a conta toda, não para um espaço específico. O próprio
  * proprietário fica de fora: ele nunca é barrado pela janela de uso.
  */
+export type InviteeWorkspace = {
+  workspaceId: string;
+  workspaceName: string;
+  members: { userId: string; name: string; email: string; role: WorkspaceRole }[];
+  invitations: { id: string; email: string; role: WorkspaceRole; createdAt: string }[];
+};
+
+/**
+ * Pessoas de cada espaço que você administra (proprietário ou administrador):
+ * membros atuais, menos você, e convites ainda pendentes. Alimenta o cartão
+ * "Convidados e funções" em Configurações.
+ */
+export async function listMyInvitees(
+  espacos: { id: string; name: string }[],
+): Promise<InviteeWorkspace[]> {
+  if (espacos.length === 0) return [];
+  const user = await requireUser();
+  const supabase = await createClient();
+  const ids = espacos.map((e) => e.id);
+
+  const [{ data: membros, error: erroMembros }, { data: convites, error: erroConvites }] =
+    await Promise.all([
+      supabase
+        .from("workspace_members")
+        .select("workspace_id, user_id, role")
+        .in("workspace_id", ids)
+        .neq("user_id", user.id),
+      supabase
+        .from("workspace_invitations")
+        .select("id, workspace_id, email, role, created_at")
+        .in("workspace_id", ids)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false }),
+    ]);
+
+  if (erroMembros) throw erroMembros;
+  if (erroConvites) throw erroConvites;
+
+  const pessoas = [...new Set((membros ?? []).map((m) => m.user_id))];
+  const { data: perfis } = pessoas.length
+    ? await supabase.from("profiles").select("id, full_name, email").in("id", pessoas)
+    : { data: [] as { id: string; full_name: string | null; email: string | null }[] };
+  const perfilPorId = new Map((perfis ?? []).map((p) => [p.id, p]));
+
+  return espacos.map((espaco) => ({
+    workspaceId: espaco.id,
+    workspaceName: espaco.name,
+    members: (membros ?? [])
+      .filter((m) => m.workspace_id === espaco.id)
+      .map((m) => {
+        const perfil = perfilPorId.get(m.user_id);
+        return {
+          userId: m.user_id,
+          name: perfil?.full_name || perfil?.email || "Sem nome",
+          email: perfil?.email ?? "",
+          role: m.role as WorkspaceRole,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+    // Convites repetidos para o mesmo e-mail: mostra só o mais recente.
+    invitations: (convites ?? [])
+      .filter((c) => c.workspace_id === espaco.id)
+      .filter((c, i, lista) => lista.findIndex((x) => x.email === c.email) === i)
+      .map((c) => ({
+        id: c.id,
+        email: c.email,
+        role: c.role as WorkspaceRole,
+        createdAt: c.created_at,
+      })),
+  }));
+}
+
 export async function listMyTeamMembers(ownerId: string): Promise<PersonRef[]> {
   const supabase = await createClient();
 

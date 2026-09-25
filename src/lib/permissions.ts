@@ -11,6 +11,7 @@ import type { WorkspaceRole } from "@/lib/database.types";
 export type Capability =
   | "task.create"
   | "task.edit"
+  | "task.assign_others"
   | "task.complete"
   | "task.delete"
   | "comment.create"
@@ -36,6 +37,11 @@ export type TaskPermissions = {
   complete: boolean;
   delete: boolean;
   /**
+   * Atribuir a outras pessoas. Sem isto, só dá para ser o próprio
+   * responsável — ao criar e ao editar.
+   */
+  assignOthers: boolean;
+  /**
    * Comentar não depende de poder editar a tarefa — é o canal de quem só
    * executa. Vem junto porque o painel decide as duas coisas no mesmo lugar.
    */
@@ -53,6 +59,7 @@ export function taskPermissions(capacidades: Set<Capability>): TaskPermissions {
     // exigir as duas marcadas faria a matriz negar o menos a quem tem o mais.
     complete: edit || capacidades.has("task.complete"),
     delete: capacidades.has("task.delete"),
+    assignOthers: capacidades.has("task.assign_others"),
   };
 }
 
@@ -75,6 +82,13 @@ export const CAPABILITY_GROUPS: {
         hint:
           "Título, descrição, responsável, prioridade, prazo, repetição e anexos. " +
           "Quem edita também conclui.",
+      },
+      {
+        value: "task.assign_others",
+        label: "Atribuir tarefas a outras pessoas",
+        hint:
+          "Sem esta opção, a pessoa só cria tarefas para si mesma e não passa " +
+          "tarefas para outra pessoa.",
       },
       { value: "task.delete", label: "Excluir tarefas" },
       {

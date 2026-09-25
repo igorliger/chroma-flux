@@ -273,6 +273,7 @@ export function TaskBrowser({
           workspaceId={workspaceId}
           people={people}
           defaultAssigneeId={assignToMeByDefault || createPersonal ? currentUserId : null}
+          onlyAssigneeId={permissoes.assignOthers ? undefined : currentUserId}
           isPersonal={createPersonal}
         />
       )}

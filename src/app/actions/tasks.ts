@@ -106,6 +106,9 @@ function revalidateTasks(workspaceId: string) {
 
 /** Mensagem legível para os erros que a RLS costuma devolver. */
 function friendlyError(code?: string, message?: string) {
+  // Recusas com texto próprio (ex.: membro tentando atribuir tarefa a outra
+  // pessoa — migração 0017) já vêm prontas para mostrar.
+  if (code === "42501" && message?.startsWith("Você ")) return message;
   if (code === "42501") return "Você não tem permissão para esta ação neste espaço.";
   if (code === "23503") return "Referência inválida para esta tarefa.";
   if (code === "42703" && message?.includes("recurrence")) {

@@ -342,12 +342,23 @@ export function TaskPanel({
                 onChange={(e) => patch({ assignee_id: e.target.value || null })}
                 className="h-9 max-w-56"
               >
-                <option value="">Ninguém</option>
-                {people.map((person) => (
-                  <option key={person.id} value={person.id}>
-                    {person.full_name || person.email}
-                  </option>
-                ))}
+                {(permissoes.assignOthers || !task.assignee_id) && (
+                  <option value="">Ninguém</option>
+                )}
+                {people
+                  // Sem "Atribuir a outras pessoas": só dá para assumir a
+                  // tarefa (ou manter quem já está) — não passá-la adiante.
+                  .filter(
+                    (person) =>
+                      permissoes.assignOthers ||
+                      person.id === currentUserId ||
+                      person.id === task.assignee_id,
+                  )
+                  .map((person) => (
+                    <option key={person.id} value={person.id}>
+                      {person.full_name || person.email}
+                    </option>
+                  ))}
               </Select>
             </Row>
 

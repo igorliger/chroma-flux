@@ -31,6 +31,7 @@ export function NewTaskDialog({
   workspaceId,
   people,
   defaultAssigneeId,
+  onlyAssigneeId,
   isPersonal = false,
 }: {
   open: boolean;
@@ -39,6 +40,12 @@ export function NewTaskDialog({
   workspaceId: string;
   people: PersonRef[];
   defaultAssigneeId?: string | null;
+  /**
+   * Quando definido, a pessoa só pode criar tarefa para si mesma (sem a
+   * permissão "Atribuir tarefas a outras pessoas"): o responsável fica
+   * travado nela. O banco recusa qualquer outro valor de todo jeito.
+   */
+  onlyAssigneeId?: string;
   /** Nasce na lista pessoal de quem cria, fora do trabalho do espaço. */
   isPersonal?: boolean;
 }) {
@@ -99,14 +106,16 @@ export function NewTaskDialog({
               name="assigneeId"
               // Em "Minhas tarefas" o responsável já vem preenchido: criar
               // uma tarefa ali e ela não aparecer na lista seria confuso.
-              defaultValue={defaultAssigneeId ?? ""}
+              defaultValue={onlyAssigneeId ?? defaultAssigneeId ?? ""}
             >
-              <option value="">Ninguém</option>
-              {people.map((person) => (
-                <option key={person.id} value={person.id}>
-                  {person.full_name || person.email}
-                </option>
-              ))}
+              {!onlyAssigneeId && <option value="">Ninguém</option>}
+              {people
+                .filter((person) => !onlyAssigneeId || person.id === onlyAssigneeId)
+                .map((person) => (
+                  <option key={person.id} value={person.id}>
+                    {person.full_name || person.email}
+                  </option>
+                ))}
             </Select>
           </Field>
 

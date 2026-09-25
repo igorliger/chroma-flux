@@ -309,3 +309,84 @@ export async function setWorkspaceResponsibleAction(formData: FormData) {
   revalidatePath(`/e/${workspaceId}`);
   revalidatePath(`/e/${workspaceId}/tarefas`);
 }
+
+// ---------------------------------------------------------------------------
+// Cartão "Convidados e funções" (Configurações)
+// ---------------------------------------------------------------------------
+// Versões das ações acima que devolvem o resultado em vez de redirecionar:
+// a tela de Configurações mostra o erro no próprio cartão.
+
+/** Funções que se pode dar a quem foi convidado — proprietário não entra aqui. */
+const funcaoConvidado = z.enum(["admin", "member", "viewer"]);
+
+export async function setMemberRoleAction(
+  workspaceId: string,
+  userId: string,
+  role: string,
+): Promise<{ error?: string }> {
+  const parsed = funcaoConvidado.safeParse(role);
+  if (!parsed.success) return { error: "Função inválida." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("workspace_members")
+    .update({ role: parsed.data })
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", userId)
+    .select("user_id");
+
+  if (error) return { error: membroErro(error.code, error.message) };
+  if (!data?.length) return { error: "Você não tem permissão para alterar membros deste espaço." };
+
+  revalidatePath("/configuracoes");
+  revalidatePath(`/e/${workspaceId}/membros`);
+  return {};
+}
+
+export async function setInvitationRoleAction(
+  invitationId: string,
+  role: string,
+): Promise<{ error?: string }> {
+  const parsed = funcaoConvidado.safeParse(role);
+  if (!parsed.success) return { error: "Função inválida." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("workspace_invitations")
+    .update({ role: parsed.data })
+    .eq("id", invitationId)
+    .eq("status", "pending")
+    .select("workspace_id");
+
+  if (error) return { error: membroErro(error.code, error.message) };
+  if (!data?.length) return { error: "Convite não encontrado ou já aceito." };
+
+  revalidatePath("/configuracoes");
+  revalidatePath(`/e/${data[0].workspace_id}/membros`);
+  return {};
+}
+
+export async function cancelInvitationAction(invitationId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("workspace_invitations")
+    .update({ status: "revoked" })
+    .eq("id", invitationId)
+    .select("workspace_id, email");
+
+  if (error) return { error: membroErro(error.code, error.message) };
+  if (!data?.length) return { error: "Convite não encontrado." };
+
+  // Convites repetidos para o mesmo e-mail no mesmo espaço saem juntos —
+  // senão o cartão mostraria o próximo da fila como se nada tivesse mudado.
+  await supabase
+    .from("workspace_invitations")
+    .update({ status: "revoked" })
+    .eq("workspace_id", data[0].workspace_id)
+    .eq("email", data[0].email)
+    .eq("status", "pending");
+
+  revalidatePath("/configuracoes");
+  revalidatePath(`/e/${data[0].workspace_id}/membros`);
+  return {};
+}
