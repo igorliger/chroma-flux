@@ -57,7 +57,9 @@ export async function createWorkspaceAction(
     };
   }
 
-  revalidatePath("/espacos");
+  // O site inteiro, não só a lista: o espaço novo também precisa aparecer
+  // em Configurações (convites e funções), no menu lateral e no seletor.
+  revalidatePath("/", "layout");
   redirect(`/e/${workspaceId}`);
 }
 
@@ -83,7 +85,8 @@ export async function updateWorkspaceAction(
   // A RLS já barra quem não é administrador; a mensagem só traduz o resultado.
   if (error) return { error: error.message };
 
-  revalidatePath(`/e/${workspaceId}`, "layout");
+  // Nome e cor aparecem em várias telas (menu, Configurações, seletor).
+  revalidatePath("/", "layout");
   return { success: "Espaço de trabalho atualizado." };
 }
 
@@ -93,7 +96,7 @@ export async function deleteWorkspaceAction(formData: FormData) {
 
   await supabase.from("workspaces").delete().eq("id", workspaceId);
 
-  revalidatePath("/espacos");
+  revalidatePath("/", "layout");
   redirect("/espacos");
 }
 
