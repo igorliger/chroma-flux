@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useOptimistic, useState, useTransition } from "react";
+import { useEffect, useMemo, useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { CheckSquare, Plus } from "lucide-react";
@@ -18,7 +18,18 @@ import {
 } from "@/app/actions/tasks";
 import { fireCompletionBurst } from "@/lib/completion-burst";
 import { playCompletionSound } from "@/lib/completion-sound";
-import { EMPTY_FILTERS, applyFilters, sortByUrgency, type TaskFilters } from "@/lib/filters";
+import {
+  DEFAULT_SORT,
+  EMPTY_FILTERS,
+  applyFilters,
+  isSortOrder,
+  sortTasks,
+  type SortOrder,
+  type TaskFilters,
+} from "@/lib/filters";
+
+/** Onde a ordem escolhida fica guardada, só neste navegador. */
+const SORT_STORAGE_KEY = "chroma-flux:ordem-tarefas";
 import type { TaskPermissions } from "@/lib/permissions";
 import type {
   CustomFieldDefinition,
@@ -72,6 +83,27 @@ export function TaskBrowser({
   const [, startTransition] = useTransition();
 
   const [filters, setFilters] = useState<TaskFilters>(initialFilters);
+  const [ordem, setOrdem] = useState<SortOrder>(DEFAULT_SORT);
+
+  // Lê a ordem guardada só depois de montar: no servidor não há
+  // localStorage, e ler antes faria o HTML do servidor divergir do cliente.
+  useEffect(() => {
+    try {
+      const salva = window.localStorage.getItem(SORT_STORAGE_KEY);
+      if (isSortOrder(salva)) setOrdem(salva);
+    } catch {
+      // Navegação privada ou armazenamento bloqueado: fica na ordem padrão.
+    }
+  }, []);
+
+  function mudarOrdem(nova: SortOrder) {
+    setOrdem(nova);
+    try {
+      window.localStorage.setItem(SORT_STORAGE_KEY, nova);
+    } catch {
+      // Sem armazenamento, a ordem vale só até recarregar a página.
+    }
+  }
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [novaTarefaAberta, setNovaTarefaAberta] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,8 +125,8 @@ export function TaskBrowser({
   const peopleById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
 
   const visibleTasks = useMemo(
-    () => sortByUrgency(applyFilters(optimisticTasks, filters)),
-    [optimisticTasks, filters],
+    () => sortTasks(applyFilters(optimisticTasks, filters), ordem),
+    [optimisticTasks, filters, ordem],
   );
 
   const openTask = optimisticTasks.find((t) => t.id === openTaskId) ?? null;
@@ -171,6 +203,8 @@ export function TaskBrowser({
             people={people}
             resultCount={visibleTasks.length}
             totalCount={optimisticTasks.length}
+            sort={ordem}
+            onSortChange={mudarOrdem}
           />
         </div>
 

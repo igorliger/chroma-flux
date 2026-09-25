@@ -136,18 +136,67 @@ export function applyFilters(tasks: TaskOverview[], filters: TaskFilters) {
   });
 }
 
-/** Ordena por prazo mais próximo e, em empate, por prioridade. */
-export function sortByUrgency(tasks: TaskOverview[]) {
+/** Ordens disponíveis no seletor "Ordenar" da lista. */
+export type SortOrder = "due_asc" | "due_desc" | "priority" | "recent";
+
+export const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
+  { value: "due_asc", label: "Prazo mais próximo" },
+  { value: "due_desc", label: "Prazo mais distante" },
+  { value: "priority", label: "Prioridade" },
+  { value: "recent", label: "Criadas recentemente" },
+];
+
+export const DEFAULT_SORT: SortOrder = "due_asc";
+
+export function isSortOrder(value: unknown): value is SortOrder {
+  return SORT_OPTIONS.some((o) => o.value === value);
+}
+
+/**
+ * Compara dois prazos por data e hora, do mais cedo para o mais tarde.
+ * No mesmo dia, a tarefa com hora vem antes da que não tem — sem hora é
+ * "qualquer momento do dia", então fica depois das que têm horário marcado.
+ * Tarefas sem prazo não passam por aqui (ver `sortTasks`).
+ */
+function compareDue(a: TaskOverview, b: TaskOverview) {
+  const dia = (a.due_date ?? "").localeCompare(b.due_date ?? "");
+  if (dia !== 0) return dia;
+  if (a.due_time && b.due_time) return a.due_time.localeCompare(b.due_time);
+  if (a.due_time !== b.due_time) return a.due_time ? -1 : 1;
+  return 0;
+}
+
+const byPriority = (a: TaskOverview, b: TaskOverview) =>
+  PRIORITY_WEIGHT[a.priority] - PRIORITY_WEIGHT[b.priority];
+
+/**
+ * Ordena a lista. Em todas as ordens, concluídas vão para o fim; nas de
+ * prazo, tarefas sem prazo também — em qualquer sentido, "sem prazo" não é
+ * nem o mais próximo nem o mais distante.
+ */
+export function sortTasks(tasks: TaskOverview[], order: SortOrder = DEFAULT_SORT) {
   return [...tasks].sort((a, b) => {
     if (a.is_completed !== b.is_completed) return a.is_completed ? 1 : -1;
 
-    if (a.due_date && b.due_date) {
-      const diff = a.due_date.localeCompare(b.due_date);
-      if (diff !== 0) return diff;
-    } else if (a.due_date !== b.due_date) {
-      return a.due_date ? -1 : 1;
+    if (order === "priority") {
+      return byPriority(a, b) || (a.due_date && b.due_date ? compareDue(a, b) : 0);
     }
 
-    return PRIORITY_WEIGHT[a.priority] - PRIORITY_WEIGHT[b.priority];
+    if (order === "recent") {
+      return (b.created_at ?? "").localeCompare(a.created_at ?? "");
+    }
+
+    if (!a.due_date || !b.due_date) {
+      if (a.due_date !== b.due_date) return a.due_date ? -1 : 1;
+      return byPriority(a, b);
+    }
+
+    const prazo = order === "due_desc" ? compareDue(b, a) : compareDue(a, b);
+    return prazo || byPriority(a, b);
   });
+}
+
+/** Ordena por prazo (data e hora) mais próximo e, em empate, por prioridade. */
+export function sortByUrgency(tasks: TaskOverview[]) {
+  return sortTasks(tasks, "due_asc");
 }

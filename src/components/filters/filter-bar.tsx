@@ -1,9 +1,15 @@
 "use client";
 
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { ArrowUpDown, Search, SlidersHorizontal, X } from "lucide-react";
 
 import { Button, Input, Select } from "@/components/ui";
-import { EMPTY_FILTERS, hasActiveFilters, type TaskFilters } from "@/lib/filters";
+import {
+  EMPTY_FILTERS,
+  SORT_OPTIONS,
+  hasActiveFilters,
+  type SortOrder,
+  type TaskFilters,
+} from "@/lib/filters";
 import { PRIORITIES } from "@/lib/utils";
 import type { PersonRef } from "@/lib/database.types";
 
@@ -19,12 +25,17 @@ export function FilterBar({
   people,
   resultCount,
   totalCount,
+  sort,
+  onSortChange,
 }: {
   filters: TaskFilters;
   onChange: (filters: TaskFilters) => void;
   people: PersonRef[];
   resultCount: number;
   totalCount: number;
+  /** Ordem da lista. Fica fora de `filters`: "Limpar" não mexe nela. */
+  sort?: SortOrder;
+  onSortChange?: (sort: SortOrder) => void;
 }) {
   const set = <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) =>
     onChange({ ...filters, [key]: value });
@@ -118,6 +129,24 @@ export function FilterBar({
           <option value="week">Próximos 7 dias</option>
           <option value="none">Sem prazo</option>
         </Select>
+
+        {sort && onSortChange && (
+          <>
+            <ArrowUpDown className="ml-2 size-4 shrink-0 text-ink-400" aria-hidden />
+            <Select
+              value={sort}
+              onChange={(e) => onSortChange(e.target.value as SortOrder)}
+              aria-label="Ordenar tarefas"
+              className="h-9 w-auto min-w-40 shrink-0"
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  Ordenar: {o.label}
+                </option>
+              ))}
+            </Select>
+          </>
+        )}
       </div>
     </div>
   );
