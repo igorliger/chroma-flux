@@ -291,6 +291,49 @@ export async function listMembers(workspaceId: string): Promise<MemberWithProfil
 }
 
 /**
+ * Todas as pessoas que participam de algum espaço do proprietário, sem
+ * repetir quem está em mais de um — para atribuir grupos de acesso, que
+ * valem para a conta toda, não para um espaço específico. O próprio
+ * proprietário fica de fora: ele nunca é barrado pela janela de uso.
+ */
+export async function listMyTeamMembers(ownerId: string): Promise<PersonRef[]> {
+  const supabase = await createClient();
+
+  const { data: workspaces, error: erroEspacos } = await supabase
+    .from("workspaces")
+    .select("id")
+    .eq("owner_id", ownerId);
+
+  if (erroEspacos) throw erroEspacos;
+  if (!workspaces?.length) return [];
+
+  const { data: members, error: erroMembros } = await supabase
+    .from("workspace_members")
+    .select("user_id")
+    .in(
+      "workspace_id",
+      workspaces.map((w) => w.id),
+    )
+    .neq("user_id", ownerId);
+
+  if (erroMembros) throw erroMembros;
+
+  const idsUnicos = [...new Set((members ?? []).map((m) => m.user_id))];
+  if (idsUnicos.length === 0) return [];
+
+  const { data: profiles, error: erroPerfis } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, avatar_url")
+    .in("id", idsUnicos);
+
+  if (erroPerfis) throw erroPerfis;
+
+  return (profiles ?? []).sort((a, b) =>
+    (a.full_name ?? "").localeCompare(b.full_name ?? "", "pt-BR"),
+  ) as PersonRef[];
+}
+
+/**
  * Matriz de permissões da conta.
  *
  * É uma só por conta, e todo espaço herda a do seu proprietário — mexer nela
@@ -350,6 +393,64 @@ export async function getMyAccessWindow(): Promise<AccessWindow> {
     endsAt: data.ends_at.slice(0, 5),
     timezone: data.timezone,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Grupos de acesso — janela de uso por grupo de membros
+// ---------------------------------------------------------------------------
+export type AccessGroup = AccessWindow & {
+  id: string;
+  name: string;
+  /** Ids dos membros (perfis) que estão neste grupo. */
+  memberIds: string[];
+};
+
+/**
+ * Grupos de acesso do proprietário, cada um com a própria janela e os
+ * membros que estão nele. Quem não aparece em `memberIds` de nenhum grupo
+ * segue a janela pessoal (`getMyAccessWindow`).
+ */
+export async function listMyAccessGroups(): Promise<AccessGroup[]> {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  const [{ data: grupos, error: erroGrupos }, { data: membros, error: erroMembros }] =
+    await Promise.all([
+      supabase
+        .from("access_groups")
+        .select("*")
+        .eq("owner_id", user.id)
+        .order("created_at", { ascending: true }),
+      supabase.from("access_group_members").select("group_id, user_id"),
+    ]);
+
+  if (erroGrupos) throw erroGrupos;
+  if (!grupos?.length) return [];
+
+  // A RLS de `access_group_members` só devolve linhas de grupos visíveis para
+  // quem pergunta — aqui, os do próprio dono — então filtrar por `group_id`
+  // já basta, sem precisar checar o dono de novo.
+  const idsDosGrupos = new Set(grupos.map((g) => g.id));
+  const membrosPorGrupo = new Map<string, string[]>();
+  if (!erroMembros) {
+    for (const m of membros ?? []) {
+      if (!idsDosGrupos.has(m.group_id)) continue;
+      const lista = membrosPorGrupo.get(m.group_id) ?? [];
+      lista.push(m.user_id);
+      membrosPorGrupo.set(m.group_id, lista);
+    }
+  }
+
+  return grupos.map((g) => ({
+    id: g.id,
+    name: g.name,
+    enabled: g.enabled,
+    weekdays: g.weekdays ?? [],
+    startsAt: g.starts_at.slice(0, 5),
+    endsAt: g.ends_at.slice(0, 5),
+    timezone: g.timezone,
+    memberIds: membrosPorGrupo.get(g.id) ?? [],
+  }));
 }
 
 /**

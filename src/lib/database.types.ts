@@ -329,6 +329,55 @@ export type Database = {
         };
         Relationships: [];
       };
+      access_groups: {
+        Row: {
+          id: string;
+          owner_id: string;
+          name: string;
+          enabled: boolean;
+          /** 0 = domingo … 6 = sábado. */
+          weekdays: number[];
+          starts_at: string;
+          ends_at: string;
+          timezone: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          name: string;
+          enabled?: boolean;
+          weekdays?: number[];
+          starts_at?: string;
+          ends_at?: string;
+          timezone?: string;
+        };
+        Update: {
+          name?: string;
+          enabled?: boolean;
+          weekdays?: number[];
+          starts_at?: string;
+          ends_at?: string;
+          timezone?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      access_group_members: {
+        Row: {
+          group_id: string;
+          user_id: string;
+        };
+        Insert: {
+          group_id: string;
+          user_id: string;
+        };
+        Update: {
+          group_id?: string;
+        };
+        Relationships: [];
+      };
       user_permissions: {
         Row: {
           user_id: string;
