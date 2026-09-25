@@ -296,3 +296,33 @@ export function isResponsible(
 ): boolean {
   return task.assignee_id === userId || (task.co_assignee_ids ?? []).includes(userId);
 }
+
+/** Tarefa com mais de um responsável: cada um conclui a sua parte (0025). */
+export function isSharedTask(task: {
+  assignee_id: string | null;
+  co_assignee_ids?: string[] | null;
+}): boolean {
+  return responsibleIds(task).length > 1;
+}
+
+/**
+ * Concluída do ponto de vista de quem está olhando: numa tarefa
+ * compartilhada em que a pessoa é responsável, conta a parte dela — para as
+ * outras pessoas a tarefa continua aberta (e atrasada, se passar do prazo).
+ */
+export function isDoneFor(
+  task: {
+    is_completed: boolean;
+    assignee_id: string | null;
+    co_assignee_ids?: string[] | null;
+    completed_by_ids?: string[] | null;
+  },
+  userId: string,
+): boolean {
+  if (task.is_completed) return true;
+  return (
+    isSharedTask(task) &&
+    isResponsible(task, userId) &&
+    (task.completed_by_ids ?? []).includes(userId)
+  );
+}

@@ -40,7 +40,16 @@ import { createClient } from "@/lib/supabase/client";
 import { fireCompletionBurst } from "@/lib/completion-burst";
 import { playCompletionSound } from "@/lib/completion-sound";
 import type { TaskPermissions } from "@/lib/permissions";
-import { PRIORITIES, cn, formatDateTime, priorityMeta, responsibleIds } from "@/lib/utils";
+import {
+  PRIORITIES,
+  cn,
+  formatDateTime,
+  isDoneFor,
+  isResponsible,
+  isSharedTask,
+  priorityMeta,
+  responsibleIds,
+} from "@/lib/utils";
 import type {
   Comment,
   CustomFieldDefinition,
@@ -101,7 +110,11 @@ export function TaskPanel({
   // Campos editáveis mantidos localmente para a digitação não engasgar.
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
-  const [completed, setCompleted] = useState(task.is_completed);
+  // Compartilhada (vários responsáveis): quem é responsável conclui a sua
+  // parte; o botão mostra a parte dessa pessoa, não a tarefa inteira.
+  const compartilhada = isSharedTask(task);
+  const minhaParte = compartilhada && isResponsible(task, currentUserId);
+  const [completed, setCompleted] = useState(isDoneFor(task, currentUserId));
   const [dueDate, setDueDate] = useState<string | null>(task.due_date);
   const [dueTime, setDueTime] = useState<string | null>(task.due_time);
   const [recurrence, setRecurrence] = useState<Recurrence>(recurrenceFromTask(task));
@@ -150,7 +163,7 @@ export function TaskPanel({
   useEffect(() => {
     setTitle(task.title);
     setDescription(task.description);
-    setCompleted(task.is_completed);
+    setCompleted(isDoneFor(task, currentUserId));
     setDueDate(task.due_date);
     setDueTime(task.due_time);
     setRecurrence(recurrenceFromTask(task));
@@ -160,7 +173,7 @@ export function TaskPanel({
     // `task` inteiro na lista faria o efeito rodar a cada revalidação e
     // atropelar o que o usuário está editando; por isso só os campos usados.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task.id, task.title, task.description, task.is_completed, task.due_date, task.due_time, load]);
+  }, [task.id, task.title, task.description, task.is_completed, (task.completed_by_ids ?? []).join(","), task.due_date, task.due_time, load]);
 
   useEffect(() => {
     setDependsOn(dependencies?.dependsOn ?? []);
@@ -299,7 +312,13 @@ export function TaskPanel({
             ) : (
               <Circle className="size-4" aria-hidden />
             )}
-            {completed ? "Concluída" : "Marcar como concluída"}
+            {minhaParte
+              ? completed
+                ? "Minha parte concluída"
+                : "Concluir minha parte"
+              : completed
+                ? "Concluída"
+                : "Marcar como concluída"}
           </button>
 
           <div className="flex items-center gap-1">
@@ -325,6 +344,42 @@ export function TaskPanel({
             </IconButton>
           </div>
         </header>
+
+        {compartilhada && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-ink-100 bg-ink-50 px-4 py-2 text-xs text-ink-600">
+            <span className="font-semibold text-ink-800">
+              {task.is_completed
+                ? "Todos concluíram"
+                : `${(task.completed_by_ids ?? []).length} de ${responsibleIds(task).length} concluíram`}
+            </span>
+            {responsibleIds(task).map((id) => {
+              const pessoa = peopleById.get(id);
+              const feito = task.is_completed || (task.completed_by_ids ?? []).includes(id);
+              return (
+                <span key={id} className={cn("inline-flex items-center gap-1", feito ? "text-emerald-700" : "text-ink-500")}>
+                  {feito ? (
+                    <CheckCircle2 className="size-3.5" aria-hidden />
+                  ) : (
+                    <Circle className="size-3.5" aria-hidden />
+                  )}
+                  {pessoa?.full_name || pessoa?.email || "?"}
+                </span>
+              );
+            })}
+            {permissoes.edit && !task.is_completed && (
+              <button
+                type="button"
+                onClick={async () => {
+                  const ok = await patch({ is_completed: true, for_all: true });
+                  if (ok) setCompleted(true);
+                }}
+                className="ml-auto rounded-md px-2 py-1 font-medium text-brand-600 hover:bg-brand-50"
+              >
+                Concluir para todos
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="min-h-0 flex-1 overflow-y-auto scrollbar-slim px-4 py-4 sm:px-5">
           {error && (

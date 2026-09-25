@@ -23,6 +23,7 @@ import {
   canAdminister,
   cn,
   isOverdue,
+  isDoneFor,
   isResponsible,
   responsibleIds,
 } from "@/lib/utils";
@@ -57,7 +58,7 @@ export default async function DashboardPage({
     const days = differenceInCalendarDays(parseISO(t.due_date), new Date());
     return days >= 0 && days <= 7;
   });
-  const mine = open.filter((t) => isResponsible(t, user.id));
+  const mine = open.filter((t) => isResponsible(t, user.id) && !isDoneFor(t, user.id));
 
   const completionRate = tasks.length
     ? Math.round((completed.length / tasks.length) * 100)
@@ -107,7 +108,7 @@ export default async function DashboardPage({
   const semResponsavel = open.filter((t) => responsibleIds(t).length === 0).length;
   const maiorCarga = Math.max(
     semResponsavel,
-    ...people.map((p) => open.filter((t) => isResponsible(t, p.id)).length),
+    ...people.map((p) => open.filter((t) => isResponsible(t, p.id) && !isDoneFor(t, p.id)).length),
     1, // evita divisão por zero quando não há nada em aberto
   );
 
@@ -115,8 +116,8 @@ export default async function DashboardPage({
     ...people.map((person) => ({
       key: person.id,
       person,
-      total: open.filter((t) => isResponsible(t, person.id)).length,
-      atrasadas: overdue.filter((t) => isResponsible(t, person.id)).length,
+      total: open.filter((t) => isResponsible(t, person.id) && !isDoneFor(t, person.id)).length,
+      atrasadas: overdue.filter((t) => isResponsible(t, person.id) && !isDoneFor(t, person.id)).length,
     })),
     {
       key: "sem-responsavel",

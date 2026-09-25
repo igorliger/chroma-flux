@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/queries";
 import type { TaskBoardStatus, TaskUpdate } from "@/lib/database.types";
+import { isResponsible, isSharedTask } from "@/lib/utils";
 
 export type ActionState = {
   error?: string;
@@ -333,6 +334,12 @@ const patchSchema = z.object({
   is_completed: z.boolean().optional(),
   board_status: boardStatus.optional(),
   position: z.number().optional(),
+  /**
+   * Concluir/reabrir a tarefa inteira mesmo sendo compartilhada — o botão
+   * "Concluir para todos" de quem administra. Sem isto, um responsável
+   * conclui só a sua parte.
+   */
+  for_all: z.boolean().optional(),
 });
 
 export type TaskPatch = Omit<z.infer<typeof patchSchema>, "taskId" | "workspaceId">;
@@ -392,6 +399,37 @@ export async function patchTaskAction(
   if (vaiConcluir) {
     const aviso = await dependenciaPendente(taskId);
     if (aviso) return { error: aviso };
+  }
+
+  // Tarefa com vários responsáveis: quem é um deles conclui (ou reabre) só a
+  // sua parte — venha o clique da lista, do quadro ou do painel. A tarefa
+  // fecha de vez quando todos concluírem (set_my_task_completion).
+  const mexeNaConclusao =
+    parsed.data.is_completed !== undefined ||
+    (parsed.data.board_status !== undefined && parsed.data.board_status !== "todo");
+  if (mexeNaConclusao && !parsed.data.for_all) {
+    const supabase = await createClient();
+    const user = await requireUser();
+    const { data: tarefa } = await supabase
+      .from("tasks")
+      .select("assignee_id, co_assignee_ids, is_completed")
+      .eq("id", taskId)
+      .maybeSingle();
+
+    if (tarefa && isSharedTask(tarefa) && isResponsible(tarefa, user.id)) {
+      const concluir =
+        parsed.data.is_completed ?? parsed.data.board_status === "done";
+      // Mover entre "A fazer" e "Fazendo" numa tarefa aberta não é conclusão.
+      if (parsed.data.is_completed !== undefined || concluir || tarefa.is_completed) {
+        const { error } = await supabase.rpc("set_my_task_completion", {
+          p_task_id: taskId,
+          p_done: concluir,
+        });
+        if (error) return { error: friendlyError(error.code, error.message) };
+        revalidateTasks(workspaceId);
+        return {};
+      }
+    }
   }
 
   // Só os campos de conteúdo vão para o UPDATE — os identificadores ficam de fora.

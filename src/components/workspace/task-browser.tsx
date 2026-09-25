@@ -17,6 +17,7 @@ import {
   patchTaskAction,
 } from "@/app/actions/tasks";
 import { fireCompletionBurst } from "@/lib/completion-burst";
+import { isDoneFor, isResponsible, isSharedTask } from "@/lib/utils";
 import { playCompletionSound } from "@/lib/completion-sound";
 import {
   DEFAULT_SORT,
@@ -117,16 +118,32 @@ export function TaskBrowser({
   const [optimisticTasks, applyOptimistic] = useOptimistic(
     tasks,
     (current: TaskOverview[], change: { id: string; completed: boolean }) =>
-      current.map((task) =>
-        task.id === change.id ? { ...task, is_completed: change.completed } : task,
-      ),
+      current.map((task) => {
+        if (task.id !== change.id) return task;
+        // Compartilhada e sou responsável: só a minha parte muda.
+        if (isSharedTask(task) && isResponsible(task, currentUserId)) {
+          const outros = (task.completed_by_ids ?? []).filter((id) => id !== currentUserId);
+          return {
+            ...task,
+            completed_by_ids: change.completed ? [...outros, currentUserId] : outros,
+          };
+        }
+        return { ...task, is_completed: change.completed };
+      }),
+  );
+
+  // Cada um vê a tarefa compartilhada como concluída quando fez a sua parte —
+  // para os demais ela continua aberta (e atrasada, se passar do prazo).
+  const tarefasParaMim = useMemo(
+    () => optimisticTasks.map((t) => ({ ...t, is_completed: isDoneFor(t, currentUserId) })),
+    [optimisticTasks, currentUserId],
   );
 
   const peopleById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
 
   const visibleTasks = useMemo(
-    () => sortTasks(applyFilters(optimisticTasks, filters), ordem),
-    [optimisticTasks, filters, ordem],
+    () => sortTasks(applyFilters(tarefasParaMim, filters), ordem),
+    [tarefasParaMim, filters, ordem],
   );
 
   const openTask = optimisticTasks.find((t) => t.id === openTaskId) ?? null;

@@ -13,7 +13,7 @@ import {
 import { Avatar, EmptyState } from "@/components/ui";
 import { recurrenceFromTask, shortRecurrenceLabel } from "@/lib/recurrence";
 import { useNow } from "@/lib/use-now";
-import { cn, dueDateMeta, priorityMeta, responsibleIds } from "@/lib/utils";
+import { cn, dueDateMeta, isSharedTask, priorityMeta, responsibleIds } from "@/lib/utils";
 import type { PersonRef, TaskOverview } from "@/lib/database.types";
 
 /**
@@ -181,17 +181,33 @@ export function TaskList({
                   <span className={cn("size-1.5 rounded-full", priority.dot)} aria-hidden />
                   <span className="hidden sm:inline">{priority.label}</span>
                 </span>
+                {isSharedTask(task) && (
+                  <span
+                    title={`${(task.completed_by_ids ?? []).length} de ${responsaveis.length} responsáveis concluíram`}
+                    className="shrink-0 rounded-full bg-ink-100 px-2 py-0.5 text-[11px] font-semibold text-ink-600"
+                  >
+                    {(task.completed_by_ids ?? []).length}/{responsaveis.length}
+                  </span>
+                )}
                 {responsaveis.length > 0 ? (
                   <span className="flex -space-x-1.5">
                     {responsaveis.slice(0, 3).map((pessoa) => (
-                      <Avatar
-                        key={pessoa.id}
-                        id={pessoa.id}
-                        name={pessoa.full_name}
-                        email={pessoa.email}
-                        size="sm"
-                        className="ring-2 ring-surface"
-                      />
+                      <span key={pessoa.id} className="relative">
+                        <Avatar
+                          id={pessoa.id}
+                          name={pessoa.full_name}
+                          email={pessoa.email}
+                          size="sm"
+                          className="ring-2 ring-surface"
+                        />
+                        {/* ✓ de quem já concluiu a sua parte */}
+                        {(task.completed_by_ids ?? []).includes(pessoa.id) && (
+                          <CheckCircle2
+                            className="absolute -bottom-1 -right-1 size-3.5 rounded-full bg-surface text-emerald-600"
+                            aria-label="concluiu"
+                          />
+                        )}
+                      </span>
                     ))}
                     {responsaveis.length > 3 && (
                       <span className="inline-flex size-6 items-center justify-center rounded-full bg-ink-200 text-[10px] font-semibold text-ink-700 ring-2 ring-surface">

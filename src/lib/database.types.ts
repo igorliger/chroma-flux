@@ -501,6 +501,8 @@ export type Database = {
           subtask_count: number;
           subtask_done_count: number;
           comment_count: number;
+          /** Responsáveis que já concluíram a sua parte (0025). */
+          completed_by_ids: string[];
         };
         Relationships: [];
       };
@@ -520,6 +522,10 @@ export type Database = {
       };
       is_blocked_by_access_window: {
         Args: Record<string, never>;
+        Returns: boolean;
+      };
+      set_my_task_completion: {
+        Args: { p_task_id: string; p_done: boolean };
         Returns: boolean;
       };
       can_create_workspace: {
