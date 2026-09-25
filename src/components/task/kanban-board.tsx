@@ -19,10 +19,15 @@ import type {
 } from "@/lib/database.types";
 import type { TaskDependencyInfo } from "@/lib/queries";
 
-const COLUNAS: { value: TaskBoardStatus; label: string }[] = [
-  { value: "todo", label: "A fazer" },
-  { value: "doing", label: "Fazendo" },
-  { value: "done", label: "Feito" },
+/**
+ * Só duas colunas visíveis: "A fazer" reúne tudo que não está concluído,
+ * incluindo o que porventura ainda esteja marcado como "doing" no banco (por
+ * exemplo, uma tarefa reaberta depois de "Feito" — ver `tasks.ts`). O valor
+ * "doing" continua existindo no schema; só a coluna "Fazendo" some da tela.
+ */
+const COLUNAS: { value: "todo" | "done"; label: string; estados: TaskBoardStatus[] }[] = [
+  { value: "todo", label: "A fazer", estados: ["todo", "doing"] },
+  { value: "done", label: "Feito", estados: ["done"] },
 ];
 
 /**
@@ -117,10 +122,10 @@ export function KanbanBoard({
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {COLUNAS.map((coluna) => {
           const doColuna = optimisticTasks
-            .filter((t) => t.board_status === coluna.value)
+            .filter((t) => coluna.estados.includes(t.board_status))
             .sort((a, b) => a.position - b.position);
 
           return (
