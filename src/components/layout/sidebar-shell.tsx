@@ -10,6 +10,7 @@ import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme";
 import { Avatar, IconButton } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { NotificationPrompt } from "@/components/notifications/notification-prompt";
 
 export type NavItem = {
   href: string;
@@ -308,7 +309,10 @@ export function SidebarShell({
           </span>
         </header>
 
-        <main className="min-w-0 flex-1">{children}</main>
+        <main className="min-w-0 flex-1">
+          <NotificationPrompt />
+          {children}
+        </main>
       </div>
     </div>
   );

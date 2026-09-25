@@ -14,6 +14,8 @@ import {
 } from "@/lib/queries";
 import { canAdminister } from "@/lib/utils";
 
+import { NotificationSettings } from "@/components/notifications/notification-settings";
+
 import { AccessGroupsPanel } from "./access-groups-panel";
 import { PermissionsMatrix } from "./permissions-matrix";
 import { ProfileForm } from "./profile-form";
@@ -84,6 +86,17 @@ export default async function ConfiguracoesPage() {
             fullName={perfil?.full_name ?? ""}
             email={user.email ?? perfil?.email ?? ""}
           />
+        </Card>
+
+        <Card className="mt-6">
+          <h2 className="font-semibold text-ink-900">Notificações</h2>
+          <p className="mb-4 mt-1 text-sm text-ink-500">
+            Avisos no computador ou celular, mesmo com o Chroma Flux fechado: tarefas
+            vencendo, resumo do dia às 8h e, para quem criou ou administra o espaço,
+            quando alguém conclui uma tarefa. Ative em cada navegador ou aparelho que
+            você usa.
+          </p>
+          <NotificationSettings />
         </Card>
 
         {mandaEmAlgumEspaco && (

@@ -378,6 +378,22 @@ export type Database = {
         };
         Relationships: [];
       };
+      push_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          user_agent: string | null;
+          created_at: string;
+          last_used_at: string | null;
+        };
+        // Gravar passa por `register_push_subscription` (ver migração 0016).
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
       user_permissions: {
         Row: {
           user_id: string;
@@ -472,6 +488,10 @@ export type Database = {
       is_blocked_by_access_window: {
         Args: Record<string, never>;
         Returns: boolean;
+      };
+      register_push_subscription: {
+        Args: { p_endpoint: string; p_p256dh: string; p_auth: string; p_user_agent: string };
+        Returns: undefined;
       };
     };
     Enums: {
