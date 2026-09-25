@@ -7,18 +7,19 @@ import { Card } from "@/components/ui";
 import {
   getMyPermissionMatrix,
   getMyProfile,
+  getTeamOverview,
   listMyAccessGroups,
-  listMyInvitees,
   listMyTeamMembers,
   listWorkspaces,
   requireUser,
 } from "@/lib/queries";
-import { canAdminister } from "@/lib/utils";
+import { ROLES, canAdminister } from "@/lib/utils";
 
 import { NotificationSettings } from "@/components/notifications/notification-settings";
 
 import { AccessGroupsPanel } from "./access-groups-panel";
-import { InviteesPanel } from "./invitees-panel";
+import { TeamInviteForm } from "./team-invite-form";
+import { TeamPanel } from "./team-panel";
 import { PermissionsMatrix } from "./permissions-matrix";
 import { ProfileForm } from "./profile-form";
 
@@ -54,12 +55,12 @@ export default async function ConfiguracoesPage() {
   */
   const mandaEmAlgumEspaco = workspaces.some((w) => canAdminister(w.role));
 
-  const convidados = await listMyInvitees(
-    workspaces.filter((w) => canAdminister(w.role)).map((w) => ({ id: w.id, name: w.name })),
-  );
+  // Convites e equipe: só do proprietário (vazio para os demais).
+  const equipe = await getTeamOverview();
 
   // Só o booleano sai do servidor — nunca o valor da chave.
   const emailConfigurado = Boolean(process.env.RESEND_API_KEY?.trim());
+
 
   return (
     <WorkspacesShell
@@ -110,25 +111,40 @@ export default async function ConfiguracoesPage() {
 
         {mandaEmAlgumEspaco && (
           <>
-            <Card className="mt-6">
-              <h2 className="font-semibold text-ink-900">Convidados e funções</h2>
-              <p className="mt-1 text-sm text-ink-500">
-                Todas as pessoas dos espaços que você administra, e os convites que
-                ainda não foram aceitos. Troque a função de cada uma aqui.
-              </p>
-              <p
-                className={
-                  emailConfigurado
-                    ? "mb-4 mt-3 rounded-lg bg-ok-bg px-3 py-2 text-xs text-ok-fg"
-                    : "mb-4 mt-3 rounded-lg bg-warn-bg px-3 py-2 text-xs text-warn-fg"
-                }
-              >
-                {emailConfigurado
-                  ? "Envio de convites por e-mail: ativo no servidor."
-                  : "Envio de convites por e-mail: a chave do Resend (RESEND_API_KEY) não está chegando ao servidor — os convites ficam registrados, mas nenhum e-mail sai."}
-              </p>
-              <InviteesPanel espacos={convidados} />
-            </Card>
+            {equipe.workspaces.length > 0 && (
+              <Card className="mt-6">
+                <h2 className="font-semibold text-ink-900">Convidados e funções</h2>
+                <p className="mt-1 text-sm text-ink-500">
+                  Convide cada pessoa uma vez só. Depois, escolha em quais espaços ela entra
+                  e com qual função — sem novo convite.
+                </p>
+                <p
+                  className={
+                    emailConfigurado
+                      ? "mb-4 mt-3 rounded-lg bg-ok-bg px-3 py-2 text-xs text-ok-fg"
+                      : "mb-4 mt-3 rounded-lg bg-warn-bg px-3 py-2 text-xs text-warn-fg"
+                  }
+                >
+                  {emailConfigurado
+                    ? "Envio de convites por e-mail: ativo no servidor."
+                    : "Envio de convites por e-mail: a chave do Resend (RESEND_API_KEY) não está chegando ao servidor — o convite fica registrado, mas nenhum e-mail sai."}
+                </p>
+
+                <TeamInviteForm workspaces={equipe.workspaces} />
+
+                <h3 className="mb-1 mt-8 text-sm font-semibold text-ink-900">
+                  Pessoas e espaços
+                </h3>
+                <ul className="mb-4 grid gap-2 rounded-lg bg-ink-100 px-3 py-2.5 text-xs text-ink-600 sm:grid-cols-3">
+                  {ROLES.filter((r) => r.value !== "owner").map((f) => (
+                    <li key={f.value}>
+                      <strong className="text-ink-800">{f.label}:</strong> {f.description}
+                    </li>
+                  ))}
+                </ul>
+                <TeamPanel equipe={equipe} />
+              </Card>
+            )}
 
             <Card className="mt-6">
               <h2 className="font-semibold text-ink-900">

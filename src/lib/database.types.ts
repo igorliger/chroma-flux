@@ -382,6 +382,35 @@ export type Database = {
         };
         Relationships: [];
       };
+      team_members: {
+        Row: { owner_id: string; user_id: string; created_at: string };
+        Insert: { owner_id: string; user_id: string };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      team_invitations: {
+        Row: {
+          id: string;
+          owner_id: string;
+          email: string;
+          /** { [workspaceId]: "admin" | "member" | "viewer" } */
+          workspace_roles: Record<string, WorkspaceRole>;
+          invited_by: string | null;
+          status: "pending" | "accepted" | "revoked";
+          created_at: string;
+        };
+        Insert: {
+          owner_id: string;
+          email: string;
+          workspace_roles?: Record<string, WorkspaceRole>;
+          invited_by: string;
+        };
+        Update: {
+          workspace_roles?: Record<string, WorkspaceRole>;
+          status?: "pending" | "accepted" | "revoked";
+        };
+        Relationships: [];
+      };
       push_subscriptions: {
         Row: {
           id: string;
@@ -492,6 +521,14 @@ export type Database = {
       is_blocked_by_access_window: {
         Args: Record<string, never>;
         Returns: boolean;
+      };
+      accept_my_team_invitations: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
+      remove_team_member: {
+        Args: { p_user_id: string };
+        Returns: undefined;
       };
       list_company_people: {
         Args: { p_workspace_id: string };

@@ -1,28 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Clock, Info, Lock } from "lucide-react";
+import { Info, Lock } from "lucide-react";
 
 import {
   changeMemberRoleAction,
   removeMemberAction,
-  revokeInvitationAction,
   setWorkspaceResponsibleAction,
 } from "@/app/actions/workspaces";
 import { Avatar, Button, Card, FormError } from "@/components/ui";
-import { AddTeamMemberForm } from "./add-team-member-form";
-import { InviteForm } from "./invite-form";
 import { ResponsibleSelect } from "./responsible-select";
 import { RoleSelect } from "./role-select";
 import {
   getWorkspacePermissionMatrix,
   getWorkspaceContext,
-  listCompanyPeople,
   listMembers,
-  listWorkspaceInvitations,
 } from "@/lib/queries";
 import { CAPABILITY_GROUPS, ROLE_ORDER, fromPlain } from "@/lib/permissions";
-import { canAdminister, formatDate, roleLabel } from "@/lib/utils";
+import { canAdminister, roleLabel } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Membros" };
 
@@ -48,13 +43,11 @@ export default async function MembersPage({
   */
   if (!isAdmin) notFound();
 
-  const [members, invitations, matriz, daEquipe] = await Promise.all([
+  const [members, matriz] = await Promise.all([
     listMembers(workspaceId),
-    listWorkspaceInvitations(workspaceId),
     // A matriz que rege este espaço é a do proprietário dele, que pode não ser
     // quem está olhando.
     getWorkspacePermissionMatrix(workspace.owner_id),
-    listCompanyPeople(workspaceId),
   ]);
 
   const ownerCount = members.filter((m) => m.role === "owner").length;
@@ -80,69 +73,19 @@ export default async function MembersPage({
         </div>
       )}
 
-      {/* Adicionar quem já é da equipe — sem convite */}
-      {isAdmin && daEquipe.length > 0 && (
-        <Card className="mb-6">
-          <h2 className="font-semibold text-ink-900">Adicionar da equipe</h2>
-          <p className="mb-4 mt-1 text-sm text-ink-500">
-            Pessoas que já estão em outros espaços seus entram direto, sem precisar de
-            novo convite por e-mail.
-          </p>
-          <AddTeamMemberForm workspaceId={workspaceId} pessoas={daEquipe} />
-        </Card>
-      )}
-
-      {/* Convidar */}
       {isAdmin && (
-        <Card className="mb-6">
-          <h2 className="mb-4 font-semibold text-ink-900">Convidar pessoa nova</h2>
-          <InviteForm workspaceId={workspaceId} />
-          <p className="mt-4 flex items-start gap-2 rounded-lg bg-ink-50 px-3 py-2 text-xs text-ink-500">
-            <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span>
-              Para quem ainda não usa o Chroma Flux. O convite fica pendente até que a
-              pessoa entre com esse mesmo e-mail — ela verá o convite na tela de espaços de
-              trabalho e poderá aceitá-lo. Se o e-mail for de alguém que já está na equipe,
-              a pessoa é adicionada direto.
-            </span>
-          </p>
-        </Card>
+        <p className="mb-6 flex items-start gap-2 rounded-lg bg-ink-50 px-3 py-2 text-xs text-ink-500">
+          <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+          <span>
+            Convites e a escolha de quem entra em cada espaço ficam em{" "}
+            <Link href="/configuracoes" className="font-medium text-brand-600 hover:underline">
+              Configurações → Convidados e funções
+            </Link>
+            .
+          </span>
+        </p>
       )}
 
-      {/* Convites pendentes */}
-      {isAdmin && invitations.length > 0 && (
-        <Card className="mb-6">
-          <h2 className="mb-3 flex items-center gap-2 font-semibold text-ink-900">
-            <Clock className="size-4 text-ink-400" aria-hidden />
-            Convites pendentes
-          </h2>
-          <ul className="divide-y divide-ink-100">
-            {invitations.map((invitation) => (
-              <li
-                key={invitation.id}
-                className="flex flex-wrap items-center justify-between gap-3 py-3"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-ink-800">
-                    {invitation.email}
-                  </p>
-                  <p className="text-xs text-ink-500">
-                    {roleLabel(invitation.role)} · expira em{" "}
-                    {formatDate(invitation.expires_at)}
-                  </p>
-                </div>
-                <form action={revokeInvitationAction}>
-                  <input type="hidden" name="invitationId" value={invitation.id} />
-                  <input type="hidden" name="workspaceId" value={workspaceId} />
-                  <Button type="submit" variant="ghost" size="sm">
-                    Cancelar
-                  </Button>
-                </form>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
 
       {/* Responsável pelo espaço */}
       <Card className="mb-6">

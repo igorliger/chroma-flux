@@ -928,3 +928,93 @@ export async function listCompanyPeople(
     email: p.email ?? "",
   }));
 }
+
+export type TeamOverview = {
+  workspaces: { id: string; name: string; color: string }[];
+  members: {
+    userId: string;
+    name: string;
+    email: string;
+    /** Função em cada espaço; ausente = sem acesso. */
+    roles: Record<string, WorkspaceRole>;
+  }[];
+  invitations: {
+    id: string;
+    email: string;
+    workspaceRoles: Record<string, WorkspaceRole>;
+    createdAt: string;
+  }[];
+};
+
+/**
+ * Tudo que a tela "Equipe" mostra: os espaços de que você é proprietário,
+ * quem faz parte da sua equipe (com a função em cada espaço) e os convites
+ * ainda não aceitos.
+ */
+export async function getTeamOverview(): Promise<TeamOverview> {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  const [{ data: espacos }, { data: equipe }, { data: convites }] = await Promise.all([
+    supabase
+      .from("workspaces")
+      .select("id, name, color")
+      .eq("owner_id", user.id)
+      .order("name"),
+    supabase.from("team_members").select("user_id").eq("owner_id", user.id),
+    supabase
+      .from("team_invitations")
+      .select("id, email, workspace_roles, created_at")
+      .eq("owner_id", user.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const workspaces = espacos ?? [];
+  const ids = (equipe ?? []).map((m) => m.user_id);
+
+  const [{ data: perfis }, { data: vinculos }] = await Promise.all([
+    ids.length
+      ? supabase.from("profiles").select("id, full_name, email").in("id", ids)
+      : Promise.resolve({ data: [] as { id: string; full_name: string | null; email: string | null }[] }),
+    ids.length && workspaces.length
+      ? supabase
+          .from("workspace_members")
+          .select("workspace_id, user_id, role")
+          .in("workspace_id", workspaces.map((w) => w.id))
+          .in("user_id", ids)
+      : Promise.resolve({ data: [] as { workspace_id: string; user_id: string; role: string }[] }),
+  ]);
+
+  const members = (perfis ?? [])
+    .map((p) => ({
+      userId: p.id,
+      name: p.full_name || p.email || "Sem nome",
+      email: p.email ?? "",
+      roles: Object.fromEntries(
+        (vinculos ?? [])
+          .filter((v) => v.user_id === p.id)
+          .map((v) => [v.workspace_id, v.role as WorkspaceRole]),
+      ) as Record<string, WorkspaceRole>,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+
+  return {
+    workspaces,
+    members,
+    invitations: (convites ?? []).map((c) => ({
+      id: c.id,
+      email: c.email,
+      workspaceRoles: (c.workspace_roles ?? {}) as Record<string, WorkspaceRole>,
+      createdAt: c.created_at,
+    })),
+  };
+}
+
+/** Aceita os convites de equipe pendentes para o e-mail de quem está logado. */
+export async function acceptMyTeamInvitations(): Promise<number> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("accept_my_team_invitations");
+  if (error) return 0;
+  return data ?? 0;
+}

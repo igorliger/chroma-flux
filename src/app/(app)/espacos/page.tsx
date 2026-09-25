@@ -8,6 +8,7 @@ import { WorkspacesShell } from "@/components/layout/workspaces-shell";
 import { Button, Card, EmptyState, FormError } from "@/components/ui";
 import {
   getMyProfile,
+  acceptMyTeamInvitations,
   listPendingInvitations,
   listWorkspaces,
   requireUser,
@@ -24,6 +25,11 @@ export default async function WorkspacesPage({
   searchParams: Promise<{ erro?: string }>;
 }) {
   const [user, params] = await Promise.all([requireUser(), searchParams]);
+
+  // Convites para a equipe feitos para este e-mail entram na hora — com os
+  // espaços que o proprietário já escolheu. Tem que vir antes da lista, para
+  // os espaços novos já aparecerem.
+  await acceptMyTeamInvitations();
   const [workspaces, invitations] = await Promise.all([
     listWorkspaces(user.id),
     listPendingInvitations(),

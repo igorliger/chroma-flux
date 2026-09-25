@@ -96,3 +96,64 @@ export async function sendWorkspaceInviteEmail(params: {
   }
   return { sent: true };
 }
+
+/**
+ * Convite para a equipe (tela "Equipe"). Enviado uma vez só por pessoa: os
+ * espaços em que ela entra são decididos depois, sem novo e-mail.
+ */
+export async function sendTeamInviteEmail(params: {
+  to: string;
+  inviterName: string;
+  workspaceNames: string[];
+}): Promise<SendInviteEmailResult> {
+  const resend = getResendClient();
+  if (!resend) {
+    console.error("[convite] e-mail não enviado: RESEND_API_KEY não configurada.");
+    return { sent: false, error: "chave do Resend não configurada no servidor" };
+  }
+
+  const siteUrl = getSiteUrl();
+  const { to, inviterName, workspaceNames } = params;
+  const espacos = workspaceNames.length
+    ? `<p style="font-size: 14px; line-height: 1.6; color: #4b5566;">Você já terá acesso a: <strong>${workspaceNames.join(", ")}</strong>.</p>`
+    : "";
+
+  let error: { message: string; name?: string } | null = null;
+  try {
+    ({ error } = await resend.emails.send({
+      from: getFromAddress(),
+      to,
+      subject: `${inviterName} convidou você para a equipe no Chroma Flux`,
+      html: `
+      <div style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 480px; margin: 0 auto; color: #1f2530;">
+        <h1 style="font-size: 20px; margin-bottom: 8px;">Você foi convidado para o Chroma Flux</h1>
+        <p style="font-size: 14px; line-height: 1.6; color: #4b5566;">
+          <strong>${inviterName}</strong> convidou você para fazer parte da equipe no Chroma Flux.
+        </p>
+        ${espacos}
+        <p style="font-size: 14px; line-height: 1.6; color: #4b5566;">
+          Entre (ou crie sua conta) com o e-mail <strong>${to}</strong> — o convite é
+          aceito automaticamente.
+        </p>
+        <a
+          href="${siteUrl}/cadastro"
+          style="display: inline-block; margin-top: 16px; padding: 10px 20px; background: #7c5cff; color: #fff; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 600;"
+        >
+          Entrar no Chroma Flux
+        </a>
+        <p style="font-size: 12px; color: #9aa2b1; margin-top: 24px;">
+          Se você não esperava este convite, pode ignorar este e-mail.
+        </p>
+      </div>
+    `,
+    }));
+  } catch (e) {
+    error = { message: e instanceof Error ? e.message : String(e) };
+  }
+
+  if (error) {
+    console.error("[convite] Resend recusou o envio:", error.name ?? "", error.message);
+    return { sent: false, error: error.message };
+  }
+  return { sent: true };
+}
