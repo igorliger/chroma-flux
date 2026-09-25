@@ -29,6 +29,9 @@ export function TaskList({
   onToggleTask,
   emptyTitle = "Nenhuma tarefa por aqui",
   emptyDescription = "Ajuste os filtros ou crie uma nova tarefa.",
+  selectable = false,
+  selectedIds,
+  onToggleSelect,
 }: {
   tasks: TaskOverview[];
   peopleById: Map<string, PersonRef>;
@@ -39,6 +42,10 @@ export function TaskList({
   onToggleTask: (task: TaskOverview, origem: { x: number; y: number }) => void;
   emptyTitle?: string;
   emptyDescription?: string;
+  /** Mostra a caixa de seleção em massa antes de cada linha. */
+  selectable?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (taskId: string) => void;
 }) {
   // Antes do retorno antecipado: hooks não podem ficar atrás de condicionais.
   const now = useNow();
@@ -68,6 +75,17 @@ export function TaskList({
               }}
               className="flex w-full cursor-pointer items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-ink-50 sm:px-4"
             >
+              {selectable && (
+                <input
+                  type="checkbox"
+                  checked={selectedIds?.has(task.id) ?? false}
+                  onClick={(event) => event.stopPropagation()}
+                  onChange={() => onToggleSelect?.(task.id)}
+                  aria-label={`Selecionar "${task.title}"`}
+                  className="size-4 shrink-0 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
+                />
+              )}
+
               <button
                 type="button"
                 disabled={!canComplete}

@@ -479,3 +479,87 @@ export async function createSubtaskAction(
   revalidateTasks(parsed.data.workspaceId);
   return {};
 }
+
+// ---------------------------------------------------------------------------
+// Ações em massa
+// ---------------------------------------------------------------------------
+const bulkSchema = z.object({
+  workspaceId: uuid,
+  taskIds: z.array(uuid).min(1, "Selecione ao menos uma tarefa."),
+});
+
+/**
+ * Exclui várias tarefas de uma vez — a caixa de seleção da lista/quadro.
+ *
+ * A política do banco (RLS) já barra quem não tem `task.delete`; aqui só
+ * validamos o formato para devolver um erro legível em vez de deixar o
+ * Supabase recusar em silêncio linha a linha.
+ */
+export async function bulkDeleteTasksAction(
+  workspaceId: string,
+  taskIds: string[],
+): Promise<{ error?: string; count?: number }> {
+  const parsed = bulkSchema.safeParse({ workspaceId, taskIds });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const supabase = await createClient();
+  const { error, count } = await supabase
+    .from("tasks")
+    .delete({ count: "exact" })
+    .in("id", parsed.data.taskIds);
+
+  if (error) return { error: friendlyError(error.code, error.message) };
+
+  revalidateTasks(workspaceId);
+  return { count: count ?? parsed.data.taskIds.length };
+}
+
+/**
+ * Marca ou reabre várias tarefas de uma vez.
+ *
+ * Segue a mesma regra de `patchTaskAction`: reabrir volta para "doing" (não
+ * "todo"), e tarefas com dependência pendente são puladas — em vez de barrar
+ * a operação inteira, a mensagem devolvida diz quantas ficaram de fora.
+ */
+export async function bulkCompleteTasksAction(
+  workspaceId: string,
+  taskIds: string[],
+  completed: boolean,
+): Promise<{ error?: string; count?: number }> {
+  const parsed = bulkSchema.safeParse({ workspaceId, taskIds });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  let idsParaAtualizar = parsed.data.taskIds;
+
+  if (completed) {
+    const pendentes = await Promise.all(
+      idsParaAtualizar.map(async (id) => ((await dependenciaPendente(id)) ? id : null)),
+    );
+    const bloqueadas = new Set(pendentes.filter((id): id is string => id !== null));
+    idsParaAtualizar = idsParaAtualizar.filter((id) => !bloqueadas.has(id));
+
+    if (idsParaAtualizar.length === 0) {
+      return { error: "Nenhuma tarefa selecionada pode ser concluída: todas dependem de outra pendente." };
+    }
+  }
+
+  const supabase = await createClient();
+  const { error, count } = await supabase
+    .from("tasks")
+    .update({ is_completed: completed, board_status: completed ? "done" : "doing" }, { count: "exact" })
+    .in("id", idsParaAtualizar);
+
+  if (error) return { error: friendlyError(error.code, error.message) };
+
+  revalidateTasks(workspaceId);
+
+  const puladas = parsed.data.taskIds.length - idsParaAtualizar.length;
+  if (puladas > 0) {
+    return {
+      count: count ?? idsParaAtualizar.length,
+      error: `${puladas} tarefa(s) não foram concluídas por depender de outra pendente.`,
+    };
+  }
+
+  return { count: count ?? idsParaAtualizar.length };
+}

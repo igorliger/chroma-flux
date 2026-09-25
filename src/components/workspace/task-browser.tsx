@@ -3,14 +3,19 @@
 import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-import { Plus } from "lucide-react";
+import { CheckSquare, Plus } from "lucide-react";
 
 import { FilterBar } from "@/components/filters/filter-bar";
 import { TaskList } from "@/components/task/task-list";
 import { TaskPanel } from "@/components/task/task-panel";
 import { NewTaskDialog } from "@/components/task/new-task-dialog";
+import { BulkActionBar } from "@/components/task/bulk-action-bar";
 import { Button } from "@/components/ui";
-import { patchTaskAction } from "@/app/actions/tasks";
+import {
+  bulkCompleteTasksAction,
+  bulkDeleteTasksAction,
+  patchTaskAction,
+} from "@/app/actions/tasks";
 import { fireCompletionBurst } from "@/lib/completion-burst";
 import { playCompletionSound } from "@/lib/completion-sound";
 import { EMPTY_FILTERS, applyFilters, sortByUrgency, type TaskFilters } from "@/lib/filters";
@@ -71,6 +76,12 @@ export function TaskBrowser({
   const [novaTarefaAberta, setNovaTarefaAberta] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Seleção em massa: só existe modo explícito para não confundir o clique
+  // de abrir a tarefa com o de selecioná-la — "Selecionar" mostra as caixas.
+  const [modoSelecao, setModoSelecao] = useState(false);
+  const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
+  const [bulkPending, startBulkTransition] = useTransition();
+
   const [optimisticTasks, applyOptimistic] = useOptimistic(
     tasks,
     (current: TaskOverview[], change: { id: string; completed: boolean }) =>
@@ -87,6 +98,40 @@ export function TaskBrowser({
   );
 
   const openTask = optimisticTasks.find((t) => t.id === openTaskId) ?? null;
+
+  function sairDoModoSelecao() {
+    setModoSelecao(false);
+    setSelecionadas(new Set());
+  }
+
+  function alternarSelecao(taskId: string) {
+    setSelecionadas((atual) => {
+      const proximo = new Set(atual);
+      if (proximo.has(taskId)) proximo.delete(taskId);
+      else proximo.add(taskId);
+      return proximo;
+    });
+  }
+
+  function handleBulkComplete(completed: boolean) {
+    const ids = [...selecionadas];
+    startBulkTransition(async () => {
+      const result = await bulkCompleteTasksAction(workspaceId, ids, completed);
+      setError(result.error ?? null);
+      sairDoModoSelecao();
+      router.refresh();
+    });
+  }
+
+  function handleBulkDelete() {
+    const ids = [...selecionadas];
+    startBulkTransition(async () => {
+      const result = await bulkDeleteTasksAction(workspaceId, ids);
+      setError(result.error ?? null);
+      sairDoModoSelecao();
+      router.refresh();
+    });
+  }
 
   function handleToggle(task: TaskOverview, origem: { x: number; y: number }) {
     // Fora da transição, de propósito: o navegador só libera áudio dentro do
@@ -108,6 +153,9 @@ export function TaskBrowser({
   }
 
   const podeCriar = allowCreate && permissoes.create;
+  // Sem editar nem excluir, não há nada para fazer em massa — a caixa de
+  // seleção ficaria só de enfeite.
+  const podeSelecionar = permissoes.edit || permissoes.delete;
 
   return (
     <div className="space-y-4">
@@ -126,18 +174,40 @@ export function TaskBrowser({
           />
         </div>
 
-        {podeCriar && (
-          <Button onClick={() => setNovaTarefaAberta(true)} className="shrink-0">
-            <Plus className="size-4" aria-hidden />
-            Nova tarefa
-          </Button>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {podeSelecionar && !modoSelecao && visibleTasks.length > 0 && (
+            <Button variant="secondary" onClick={() => setModoSelecao(true)}>
+              <CheckSquare className="size-4" aria-hidden />
+              Selecionar
+            </Button>
+          )}
+
+          {podeCriar && (
+            <Button onClick={() => setNovaTarefaAberta(true)}>
+              <Plus className="size-4" aria-hidden />
+              Nova tarefa
+            </Button>
+          )}
+        </div>
       </div>
 
       {error && (
         <p role="alert" className="rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger-fg">
           {error}
         </p>
+      )}
+
+      {modoSelecao && (
+        <BulkActionBar
+          count={selecionadas.size}
+          canEdit={permissoes.edit || permissoes.complete}
+          canDelete={permissoes.delete}
+          pending={bulkPending}
+          onComplete={() => handleBulkComplete(true)}
+          onReopen={() => handleBulkComplete(false)}
+          onDelete={handleBulkDelete}
+          onClear={sairDoModoSelecao}
+        />
       )}
 
       <TaskList
@@ -148,6 +218,9 @@ export function TaskBrowser({
         onToggleTask={handleToggle}
         emptyTitle={emptyTitle}
         emptyDescription={emptyDescription}
+        selectable={modoSelecao}
+        selectedIds={selecionadas}
+        onToggleSelect={alternarSelecao}
       />
 
       {podeCriar && (

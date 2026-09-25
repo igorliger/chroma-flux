@@ -2,11 +2,16 @@
 
 import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ListTree, MessageSquare, Repeat } from "lucide-react";
+import { AlertTriangle, CheckSquare, ListTree, MessageSquare, Repeat } from "lucide-react";
 
 import { TaskPanel } from "@/components/task/task-panel";
-import { EmptyState } from "@/components/ui";
-import { patchTaskAction } from "@/app/actions/tasks";
+import { BulkActionBar } from "@/components/task/bulk-action-bar";
+import { Button, EmptyState } from "@/components/ui";
+import {
+  bulkCompleteTasksAction,
+  bulkDeleteTasksAction,
+  patchTaskAction,
+} from "@/app/actions/tasks";
 import { recurrenceFromTask, shortRecurrenceLabel } from "@/lib/recurrence";
 import { useNow } from "@/lib/use-now";
 import { cn, dueDateMeta, positionBetween, priorityMeta } from "@/lib/utils";
@@ -60,6 +65,11 @@ export function KanbanBoard({
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Mesmo modelo de seleção em massa da lista de tarefas — ver `TaskBrowser`.
+  const [modoSelecao, setModoSelecao] = useState(false);
+  const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
+  const [bulkPending, startBulkTransition] = useTransition();
+
   const [optimisticTasks, applyOptimistic] = useOptimistic(
     tasks,
     (
@@ -80,6 +90,41 @@ export function KanbanBoard({
 
   const peopleById = new Map(people.map((p) => [p.id, p]));
   const openTask = optimisticTasks.find((t) => t.id === openTaskId) ?? null;
+  const podeSelecionar = permissoes.edit || permissoes.delete;
+
+  function sairDoModoSelecao() {
+    setModoSelecao(false);
+    setSelecionadas(new Set());
+  }
+
+  function alternarSelecao(taskId: string) {
+    setSelecionadas((atual) => {
+      const proximo = new Set(atual);
+      if (proximo.has(taskId)) proximo.delete(taskId);
+      else proximo.add(taskId);
+      return proximo;
+    });
+  }
+
+  function handleBulkComplete(completed: boolean) {
+    const ids = [...selecionadas];
+    startBulkTransition(async () => {
+      const result = await bulkCompleteTasksAction(workspaceId, ids, completed);
+      setError(result.error ?? null);
+      sairDoModoSelecao();
+      router.refresh();
+    });
+  }
+
+  function handleBulkDelete() {
+    const ids = [...selecionadas];
+    startBulkTransition(async () => {
+      const result = await bulkDeleteTasksAction(workspaceId, ids);
+      setError(result.error ?? null);
+      sairDoModoSelecao();
+      router.refresh();
+    });
+  }
 
   async function moverPara(
     taskId: string,
@@ -116,6 +161,28 @@ export function KanbanBoard({
 
   return (
     <div className="space-y-3">
+      {podeSelecionar && !modoSelecao && optimisticTasks.length > 0 && (
+        <div className="flex justify-end">
+          <Button variant="secondary" size="sm" onClick={() => setModoSelecao(true)}>
+            <CheckSquare className="size-4" aria-hidden />
+            Selecionar
+          </Button>
+        </div>
+      )}
+
+      {modoSelecao && (
+        <BulkActionBar
+          count={selecionadas.size}
+          canEdit={permissoes.edit || permissoes.complete}
+          canDelete={permissoes.delete}
+          pending={bulkPending}
+          onComplete={() => handleBulkComplete(true)}
+          onReopen={() => handleBulkComplete(false)}
+          onDelete={handleBulkDelete}
+          onClear={sairDoModoSelecao}
+        />
+      )}
+
       {error && (
         <p role="alert" className="rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger-fg">
           {error}
@@ -162,7 +229,7 @@ export function KanbanBoard({
                   return (
                     <div
                       key={task.id}
-                      draggable={permissoes.edit}
+                      draggable={permissoes.edit && !modoSelecao}
                       onDragStart={(e) => onDragStart(e, task.id)}
                       onDragEnd={onDragEnd}
                       onDragOver={(e) => {
@@ -176,64 +243,79 @@ export function KanbanBoard({
                         if (!taskId || taskId === task.id) return;
                         void moverPara(taskId, coluna.value, anterior?.position, task.position);
                       }}
-                      onClick={() => setOpenTaskId(task.id)}
+                      onClick={() =>
+                        modoSelecao ? alternarSelecao(task.id) : setOpenTaskId(task.id)
+                      }
                       className={cn(
-                        "cursor-pointer rounded-lg border border-ink-200 bg-surface p-2.5 shadow-sm transition-colors hover:border-brand-300",
-                        permissoes.edit && "cursor-grab active:cursor-grabbing",
+                        "flex cursor-pointer items-start gap-2 rounded-lg border border-ink-200 bg-surface p-2.5 shadow-sm transition-colors hover:border-brand-300",
+                        permissoes.edit && !modoSelecao && "cursor-grab active:cursor-grabbing",
                       )}
                     >
-                      <p
-                        className={cn(
-                          "text-sm font-medium text-ink-800",
-                          task.is_completed && "text-ink-400 line-through",
-                        )}
-                      >
-                        {task.title}
-                      </p>
+                      {modoSelecao && (
+                        <input
+                          type="checkbox"
+                          checked={selecionadas.has(task.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={() => alternarSelecao(task.id)}
+                          aria-label={`Selecionar "${task.title}"`}
+                          className="mt-0.5 size-4 shrink-0 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
+                        />
+                      )}
 
-                      <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink-500">
-                        {due?.overdue && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-danger-bg px-1.5 py-0.5 font-semibold text-danger-fg">
-                            <AlertTriangle className="size-3" aria-hidden />
-                            Atrasado
-                          </span>
-                        )}
-                        {shortRecurrenceLabel(recurrenceFromTask(task)) && (
-                          <span className="inline-flex items-center gap-1 font-medium text-brand-600">
-                            <Repeat className="size-3" aria-hidden />
-                          </span>
-                        )}
-                        {task.subtask_count > 0 && (
-                          <span className="inline-flex items-center gap-1">
-                            <ListTree className="size-3" aria-hidden />
-                            {task.subtask_done_count}/{task.subtask_count}
-                          </span>
-                        )}
-                        {task.comment_count > 0 && (
-                          <span className="inline-flex items-center gap-1">
-                            <MessageSquare className="size-3" aria-hidden />
-                            {task.comment_count}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="mt-2 flex items-center justify-between">
-                        <span
+                      <div className="min-w-0 flex-1">
+                        <p
                           className={cn(
-                            "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
-                            priority.chip,
+                            "text-sm font-medium text-ink-800",
+                            task.is_completed && "text-ink-400 line-through",
                           )}
                         >
-                          <span className={cn("size-1.5 rounded-full", priority.dot)} aria-hidden />
-                        </span>
-                        {assignee && (
+                          {task.title}
+                        </p>
+
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink-500">
+                          {due?.overdue && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-danger-bg px-1.5 py-0.5 font-semibold text-danger-fg">
+                              <AlertTriangle className="size-3" aria-hidden />
+                              Atrasado
+                            </span>
+                          )}
+                          {shortRecurrenceLabel(recurrenceFromTask(task)) && (
+                            <span className="inline-flex items-center gap-1 font-medium text-brand-600">
+                              <Repeat className="size-3" aria-hidden />
+                            </span>
+                          )}
+                          {task.subtask_count > 0 && (
+                            <span className="inline-flex items-center gap-1">
+                              <ListTree className="size-3" aria-hidden />
+                              {task.subtask_done_count}/{task.subtask_count}
+                            </span>
+                          )}
+                          {task.comment_count > 0 && (
+                            <span className="inline-flex items-center gap-1">
+                              <MessageSquare className="size-3" aria-hidden />
+                              {task.comment_count}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-2 flex items-center justify-between">
                           <span
-                            title={assignee.full_name}
-                            className="inline-flex size-5 items-center justify-center rounded-full bg-ink-200 text-[9px] font-semibold text-ink-700"
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                              priority.chip,
+                            )}
                           >
-                            {(assignee.full_name || assignee.email).slice(0, 1).toUpperCase()}
+                            <span className={cn("size-1.5 rounded-full", priority.dot)} aria-hidden />
                           </span>
-                        )}
+                          {assignee && (
+                            <span
+                              title={assignee.full_name}
+                              className="inline-flex size-5 items-center justify-center rounded-full bg-ink-200 text-[9px] font-semibold text-ink-700"
+                            >
+                              {(assignee.full_name || assignee.email).slice(0, 1).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
