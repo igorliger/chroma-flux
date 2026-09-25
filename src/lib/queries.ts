@@ -395,6 +395,103 @@ export async function getMyAccessWindow(): Promise<AccessWindow> {
   };
 }
 
+export type BlockingWindow = {
+  weekdays: number[];
+  startsAt: string;
+  endsAt: string;
+  timezone: string;
+};
+
+/**
+ * `true` se a pessoa está fora da janela de uso agora (do grupo em que
+ * estiver, ou da janela pessoal do dono, se não estiver em nenhum grupo) —
+ * chamado pelo middleware para barrar a entrada no site, não só a escrita.
+ * O proprietário nunca é bloqueado.
+ */
+export async function amIBlockedByAccessWindow(): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("is_blocked_by_access_window");
+  // Erro de rede/RPC não deve travar o acesso ao site — só a janela em si
+  // (já validada no banco a cada ação de escrita) barra de verdade.
+  if (error) return false;
+  return data ?? false;
+}
+
+/**
+ * A janela que está bloqueando a pessoa agora — para explicar na tela de
+ * "fora do horário" quando ela pode voltar. `null` se, por algum motivo,
+ * nenhuma janela ativa for encontrada (a pessoa não deveria estar aqui, mas
+ * a tela ainda precisa de algo para mostrar).
+ */
+export async function getMyBlockingWindow(): Promise<BlockingWindow | null> {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  // A pessoa pode estar em espaços de vários donos; pegamos o dono de
+  // qualquer espaço dela — a checagem do grupo/pessoal é por dono mesmo.
+  const { data: minhasMembresias } = await supabase
+    .from("workspace_members")
+    .select("workspace_id")
+    .eq("user_id", user.id);
+
+  const workspaceIds = (minhasMembresias ?? []).map((m) => m.workspace_id);
+  if (workspaceIds.length === 0) return null;
+
+  const { data: workspaces } = await supabase
+    .from("workspaces")
+    .select("owner_id")
+    .in("id", workspaceIds);
+
+  const ownerIds = [...new Set((workspaces ?? []).map((w) => w.owner_id))];
+  if (ownerIds.length === 0) return null;
+
+  // Grupo primeiro (qualquer um dos donos), senão janela pessoal do primeiro dono.
+  const { data: grupo } = await supabase
+    .from("access_group_members")
+    .select("access_groups!inner(owner_id, enabled, weekdays, starts_at, ends_at, timezone)")
+    .eq("user_id", user.id)
+    .in("access_groups.owner_id", ownerIds)
+    .eq("access_groups.enabled", true)
+    .maybeSingle();
+
+  const grupoData = (
+    grupo as unknown as {
+      access_groups: {
+        enabled: boolean;
+        weekdays: number[];
+        starts_at: string;
+        ends_at: string;
+        timezone: string;
+      };
+    } | null
+  )?.access_groups;
+
+  if (grupoData) {
+    return {
+      weekdays: grupoData.weekdays ?? [],
+      startsAt: grupoData.starts_at.slice(0, 5),
+      endsAt: grupoData.ends_at.slice(0, 5),
+      timezone: grupoData.timezone,
+    };
+  }
+
+  const { data: janela } = await supabase
+    .from("user_access_windows")
+    .select("weekdays, starts_at, ends_at, timezone")
+    .in("user_id", ownerIds)
+    .eq("enabled", true)
+    .maybeSingle();
+
+  if (!janela) return null;
+
+  return {
+    weekdays: janela.weekdays ?? [],
+    startsAt: janela.starts_at.slice(0, 5),
+    endsAt: janela.ends_at.slice(0, 5),
+    timezone: janela.timezone,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Grupos de acesso — janela de uso por grupo de membros
 // ---------------------------------------------------------------------------

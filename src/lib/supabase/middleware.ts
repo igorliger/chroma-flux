@@ -10,6 +10,13 @@ function isPublic(pathname: string) {
 }
 
 /**
+ * Rotas que continuam acessíveis mesmo fora da janela de uso: a própria tela
+ * de aviso (senão o redirect para ela viraria um loop) e sair, que a tela usa
+ * para deslogar. Tudo que é público já passa antes desta checagem.
+ */
+const ALLOWED_WHILE_BLOCKED = ["/fora-do-horario"];
+
+/**
  * Renova o token de acesso a cada navegação e barra rotas privadas.
  *
  * O middleware é a única camada que consegue reescrever os cookies de sessão,
@@ -57,6 +64,24 @@ export async function updateSession(request: NextRequest) {
     redirect.pathname = "/espacos";
     redirect.search = "";
     return NextResponse.redirect(redirect);
+  }
+
+  // Fora da janela de uso: manda para a tela de aviso em vez do conteúdo —
+  // só para quem já está autenticado e fora das rotas sempre permitidas.
+  // Um erro na chamada (rede, RPC fora do ar) não bloqueia ninguém: só a
+  // janela em si, já validada de novo a cada ação de escrita no banco.
+  if (
+    user &&
+    !isPublic(pathname) &&
+    !ALLOWED_WHILE_BLOCKED.some((route) => pathname.startsWith(route))
+  ) {
+    const { data: bloqueado } = await supabase.rpc("is_blocked_by_access_window");
+    if (bloqueado) {
+      const redirect = request.nextUrl.clone();
+      redirect.pathname = "/fora-do-horario";
+      redirect.search = "";
+      return NextResponse.redirect(redirect);
+    }
   }
 
   return response;

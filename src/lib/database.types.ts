@@ -469,6 +469,10 @@ export type Database = {
         Args: { p_workspace_id: string };
         Returns: boolean;
       };
+      is_blocked_by_access_window: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
     };
     Enums: {
       workspace_role: WorkspaceRole;
