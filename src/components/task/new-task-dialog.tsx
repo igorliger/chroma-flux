@@ -14,6 +14,7 @@ import {
   SubmitButton,
   Textarea,
 } from "@/components/ui";
+import { AssigneePicker } from "@/components/task/assignee-picker";
 import { DueDateField } from "@/components/task/due-date-field";
 import { formatBytes, validateFile } from "@/lib/attachments";
 import { createClient } from "@/lib/supabase/client";
@@ -36,6 +37,7 @@ export function NewTaskDialog({
   people,
   defaultAssigneeId,
   onlyAssigneeId,
+  currentUserId,
   isPersonal = false,
 }: {
   open: boolean;
@@ -50,6 +52,8 @@ export function NewTaskDialog({
    * travado nela. O banco recusa qualquer outro valor de todo jeito.
    */
   onlyAssigneeId?: string;
+  /** Quem está criando — marcado como "(você)" na lista de responsáveis. */
+  currentUserId: string;
   /** Nasce na lista pessoal de quem cria, fora do trabalho do espaço. */
   isPersonal?: boolean;
 }) {
@@ -68,7 +72,11 @@ export function NewTaskDialog({
   const [erroArquivo, setErroArquivo] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
-  const [responsavel, setResponsavel] = useState<string>(onlyAssigneeId ?? defaultAssigneeId ?? "");
+  const responsaveisIniciais = () => {
+    const id = onlyAssigneeId ?? defaultAssigneeId;
+    return id ? [id] : [];
+  };
+  const [responsaveis, setResponsaveis] = useState<string[]>(responsaveisIniciais);
   const inputArquivo = useRef<HTMLInputElement>(null);
 
   function limpar() {
@@ -79,7 +87,7 @@ export function NewTaskDialog({
     setSubtarefas([]);
     setArquivos([]);
     setErroArquivo(null);
-    setResponsavel(onlyAssigneeId ?? defaultAssigneeId ?? "");
+    setResponsaveis(responsaveisIniciais());
   }
 
   function fechar() {
@@ -158,44 +166,26 @@ export function NewTaskDialog({
           />
         </Field>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Responsável" htmlFor="task-assignee">
-            <Select
-              id="task-assignee"
-              name="assigneeId"
-              // Em "Minhas tarefas" o responsável já vem preenchido: criar
-              // uma tarefa ali e ela não aparecer na lista seria confuso.
-              value={responsavel}
-              onChange={(e) => setResponsavel(e.target.value)}
-            >
-              {!onlyAssigneeId && <option value="">Ninguém</option>}
-              {/* Todo mundo do espaço (menos visualizadores) — ver createTaskAction. */}
-              {!onlyAssigneeId && !isPersonal && people.length > 1 && (
-                <option value="__todos__">Todos</option>
-              )}
-              {people
-                .filter((person) => !onlyAssigneeId || person.id === onlyAssigneeId)
-                .map((person) => (
-                  <option key={person.id} value={person.id}>
-                    {person.full_name || person.email}
-                  </option>
-                ))}
-            </Select>
+        {!isPersonal && (
+          <Field label="Responsáveis" hint="Marque uma ou mais pessoas — ou Todos.">
+            {/* O primeiro marcado é o principal; os demais, outros responsáveis. */}
+            <input type="hidden" name="assigneeId" value={responsaveis[0] ?? ""} />
+            {responsaveis.slice(1).map((id) => (
+              <input key={id} type="hidden" name="coAssigneeIds" value={id} />
+            ))}
+            <div className="max-h-56 overflow-y-auto rounded-lg border border-ink-200 p-1">
+              <AssigneePicker
+                people={people}
+                selecionados={responsaveis}
+                onChange={setResponsaveis}
+                currentUserId={currentUserId}
+                podeOutros={!onlyAssigneeId}
+              />
+            </div>
           </Field>
+        )}
 
-          {!isPersonal && !onlyAssigneeId && people.length > 1 && responsavel !== "__todos__" && (
-            <Field label="Mais um responsável" htmlFor="task-co-assignee" hint="Opcional.">
-              <Select id="task-co-assignee" name="coAssigneeIds" defaultValue="">
-                <option value="">Ninguém</option>
-                {people.map((person) => (
-                  <option key={person.id} value={person.id}>
-                    {person.full_name || person.email}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          )}
-
+        <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Prioridade" htmlFor="task-priority">
             <Select id="task-priority" name="priority" defaultValue="medium">
               {PRIORITIES.map((p) => (

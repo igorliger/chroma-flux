@@ -274,6 +274,7 @@ export function TaskBrowser({
           people={people}
           defaultAssigneeId={assignToMeByDefault || createPersonal ? currentUserId : null}
           onlyAssigneeId={permissoes.assignOthers ? undefined : currentUserId}
+          currentUserId={currentUserId}
           isPersonal={createPersonal}
         />
       )}
