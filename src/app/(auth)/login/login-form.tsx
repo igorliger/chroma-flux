@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 
 import { signInAction, type AuthState } from "@/app/actions/auth";
@@ -20,20 +20,32 @@ export function LoginForm({
     error: initialError,
   });
 
-  // O React limpa o formulário depois de cada envio. Guardando o e-mail em
-  // estado, ele continua preenchido quando a senha está errada — só a senha
-  // precisa ser digitada de novo.
+  // Com `<form action>`, o React 19 limpa o formulário inteiro depois de
+  // cada envio — inclusive o e-mail. Por isso o envio é feito à mão (onSubmit
+  // chamando a action), o que não dispara essa limpeza: com a senha errada,
+  // o e-mail continua preenchido e só a senha precisa ser digitada de novo.
   const [emailDigitado, setEmailDigitado] = useState(email ?? "");
+  const [enviando, startTransition] = useTransition();
   const senhaRef = useRef<HTMLInputElement>(null);
 
-  // Errou: leva o cursor direto para a senha.
+  // Errou: apaga só a senha e leva o cursor direto para ela.
   useEffect(() => {
-    if (state.error && emailDigitado) senhaRef.current?.focus();
+    if (state.error && senhaRef.current) {
+      senhaRef.current.value = "";
+      if (emailDigitado) senhaRef.current.focus();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        const dados = new FormData(event.currentTarget);
+        startTransition(() => formAction(dados));
+      }}
+      className="space-y-5"
+    >
       {next && <input type="hidden" name="proximo" value={next} />}
 
       <FormError>{state.error}</FormError>
@@ -72,7 +84,7 @@ export function LoginForm({
         </Link>
       </div>
 
-      <SubmitButton size="lg" className="w-full">
+      <SubmitButton size="lg" className="w-full" loading={enviando}>
         Entrar
       </SubmitButton>
     </form>
