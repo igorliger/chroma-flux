@@ -76,6 +76,16 @@ export function canAdminister(role: WorkspaceRole | null | undefined) {
   return role === "owner" || role === "admin";
 }
 
+/**
+ * Quem pode criar espaço novo: proprietário ou administrador de algum
+ * espaço, ou quem ainda não participa de nenhum (conta nova). Espelha
+ * `can_create_workspace()` no banco, que é quem de fato decide — aqui é só
+ * para não oferecer o botão a quem seria recusado.
+ */
+export function canCreateWorkspace(roles: (WorkspaceRole | null | undefined)[]) {
+  return roles.length === 0 || roles.some(canAdminister);
+}
+
 // ---------------------------------------------------------------------------
 // Datas
 // ---------------------------------------------------------------------------

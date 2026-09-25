@@ -20,9 +20,12 @@ import { accentClass, cn } from "@/lib/utils";
 export function WorkspaceSwitcher({
   atual,
   workspaces,
+  podeCriar = true,
 }: {
   atual: { id: string; name: string; color: string };
   workspaces: { id: string; name: string; color: string }[];
+  /** Mostra "Novo espaço" — só para proprietários e administradores. */
+  podeCriar?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
@@ -117,14 +120,16 @@ export function WorkspaceSwitcher({
               <LayoutGrid className="size-4 shrink-0 text-ink-400" aria-hidden />
               Ver todos os espaços
             </Link>
-            <Link
-              href="/espacos?novo=1"
-              role="menuitem"
-              className="flex items-center gap-2.5 px-3 py-2 text-sm text-ink-700 transition-colors hover:bg-ink-100"
-            >
-              <Plus className="size-4 shrink-0 text-ink-400" aria-hidden />
-              Novo espaço
-            </Link>
+            {podeCriar && (
+              <Link
+                href="/espacos?novo=1"
+                role="menuitem"
+                className="flex items-center gap-2.5 px-3 py-2 text-sm text-ink-700 transition-colors hover:bg-ink-100"
+              >
+                <Plus className="size-4 shrink-0 text-ink-400" aria-hidden />
+                Novo espaço
+              </Link>
+            )}
           </div>
         </div>
       )}

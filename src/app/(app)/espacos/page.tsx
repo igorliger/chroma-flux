@@ -12,7 +12,7 @@ import {
   listWorkspaces,
   requireUser,
 } from "@/lib/queries";
-import { accentClass, roleLabel } from "@/lib/utils";
+import { accentClass, canCreateWorkspace, roleLabel } from "@/lib/utils";
 
 import { NewWorkspaceButton } from "./workspace-dialog";
 
@@ -30,6 +30,8 @@ export default async function WorkspacesPage({
   ]);
 
   const perfil = await getMyProfile();
+  // Membros comuns não criam espaços — só proprietários e administradores.
+  const podeCriar = canCreateWorkspace(workspaces.map((w) => w.role));
 
   return (
     <WorkspacesShell
@@ -56,7 +58,7 @@ export default async function WorkspacesPage({
               Os dados de cada espaço ficam isolados dos demais.
             </p>
           </div>
-          {workspaces.length > 0 && <NewWorkspaceButton />}
+          {workspaces.length > 0 && podeCriar && <NewWorkspaceButton />}
         </div>
 
         <div className="mt-6">

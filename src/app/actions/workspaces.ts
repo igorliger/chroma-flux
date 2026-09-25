@@ -52,7 +52,7 @@ export async function createWorkspaceAction(
     return {
       error:
         error.code === "42501"
-          ? "Não foi possível criar o espaço de trabalho. Verifique se as políticas de segurança do banco estão atualizadas."
+          ? "Só proprietários e administradores podem criar espaços de trabalho."
           : error.message,
     };
   }

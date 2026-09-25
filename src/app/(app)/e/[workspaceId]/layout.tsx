@@ -19,7 +19,7 @@ export default async function WorkspaceLayout({
   return (
     <AppShell
       workspace={workspace}
-      workspaces={workspaces.map((w) => ({ id: w.id, name: w.name, color: w.color }))}
+      workspaces={workspaces.map((w) => ({ id: w.id, name: w.name, color: w.color, role: w.role }))}
       role={role}
       user={{ id: user.id, name: profile.full_name, email: user.email }}
       signOut={signOutAction}

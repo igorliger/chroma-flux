@@ -13,7 +13,7 @@ import {
 
 import { SidebarShell, type NavItem } from "@/components/layout/sidebar-shell";
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
-import { accentClass, canAdminister, roleLabel } from "@/lib/utils";
+import { accentClass, canAdminister, canCreateWorkspace, roleLabel } from "@/lib/utils";
 import type { Workspace, WorkspaceRole } from "@/lib/database.types";
 
 /** Casca das telas de dentro de um espaço de trabalho. */
@@ -27,7 +27,7 @@ export function AppShell({
 }: {
   workspace: Workspace;
   /** Todos os espaços do usuário, para o seletor no topo da barra. */
-  workspaces: { id: string; name: string; color: string }[];
+  workspaces: { id: string; name: string; color: string; role: WorkspaceRole }[];
   role: WorkspaceRole;
   user: { id: string; name: string; email: string };
   signOut: () => Promise<void>;
@@ -64,6 +64,7 @@ export function AppShell({
         <WorkspaceSwitcher
           atual={{ id: workspace.id, name: workspace.name, color: workspace.color }}
           workspaces={workspaces}
+          podeCriar={canCreateWorkspace(workspaces.map((w) => w.role))}
         />
       }
       grupos={[
