@@ -524,6 +524,14 @@ export type Database = {
         Args: Record<string, never>;
         Returns: boolean;
       };
+      set_password_code: {
+        Args: { p_hmac: string };
+        Returns: undefined;
+      };
+      check_password_code: {
+        Args: { p_hmac: string };
+        Returns: string;
+      };
       set_my_task_completion: {
         Args: { p_task_id: string; p_done: boolean };
         Returns: boolean;

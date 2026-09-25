@@ -157,3 +157,44 @@ export async function sendTeamInviteEmail(params: {
   }
   return { sent: true };
 }
+
+/** Código de 6 dígitos para alterar a senha (Configurações). */
+export async function sendPasswordCodeEmail(params: {
+  to: string;
+  code: string;
+}): Promise<SendInviteEmailResult> {
+  const resend = getResendClient();
+  if (!resend) return { sent: false, error: "chave do Resend não configurada no servidor" };
+
+  let error: { message: string; name?: string } | null = null;
+  try {
+    ({ error } = await resend.emails.send({
+      from: getFromAddress(),
+      to: params.to,
+      subject: `${params.code} é o seu código para alterar a senha do Chroma Flux`,
+      html: `
+      <div style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 480px; margin: 0 auto; color: #1f2530;">
+        <h1 style="font-size: 20px; margin-bottom: 8px;">Código para alterar a senha</h1>
+        <p style="font-size: 14px; line-height: 1.6; color: #4b5566;">
+          Use este código em Configurações → Alterar senha. Ele vale por 10 minutos.
+        </p>
+        <p style="font-size: 32px; font-weight: 700; letter-spacing: 8px; margin: 24px 0; color: #1f2530;">
+          ${params.code}
+        </p>
+        <p style="font-size: 12px; color: #9aa2b1;">
+          Não pediu para trocar a senha? Ignore este e-mail — sem o código, nada muda. Se
+          isso se repetir, troque sua senha: alguém pode ter acesso à sua conta.
+        </p>
+      </div>
+    `,
+    }));
+  } catch (e) {
+    error = { message: e instanceof Error ? e.message : String(e) };
+  }
+
+  if (error) {
+    console.error("[senha] Resend recusou o envio:", error.name ?? "", error.message);
+    return { sent: false, error: error.message };
+  }
+  return { sent: true };
+}

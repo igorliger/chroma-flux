@@ -102,7 +102,8 @@ export default async function ConfiguracoesPage() {
         <Card className="mt-6">
           <h2 className="font-semibold text-ink-900">Alterar senha</h2>
           <p className="mb-4 mt-1 text-sm text-ink-500">
-            Para trocar, confirme primeiro a senha que você usa hoje.
+            Por segurança, enviamos um código para o seu e-mail antes de trocar. Serve
+            também para criar uma senha, se você entrou pelo convite.
           </p>
           <PasswordForm />
         </Card>

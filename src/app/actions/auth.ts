@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { translateAuthError } from "@/lib/auth-errors";
+import { sendPasswordCodeEmail } from "@/lib/email";
+import { gerarCodigo, hmacDoCodigo } from "@/lib/password-code";
 import { getSiteUrl } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -195,31 +197,61 @@ export async function updateProfileAction(
   return { success: "Perfil atualizado." };
 }
 
+/** Mostra o e-mail pela metade: "igo***@chromatechnology.com.br". */
+function mascararEmail(email: string) {
+  const [nome, dominio] = email.split("@");
+  return `${nome.slice(0, 3)}***@${dominio}`;
+}
+
+/** Passo 1 de "Alterar senha": manda o código de 6 dígitos para o e-mail da conta. */
+export async function requestPasswordCodeAction(): Promise<AuthState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) return { error: "Sessão expirada. Entre de novo." };
+
+  let codigo: string;
+  try {
+    codigo = gerarCodigo();
+    const { error } = await supabase.rpc("set_password_code", {
+      p_hmac: hmacDoCodigo(user.id, codigo),
+    });
+    if (error) {
+      return {
+        error: error.message.includes("Aguarde")
+          ? error.message
+          : "Não foi possível gerar o código. Tente de novo.",
+      };
+    }
+  } catch {
+    return { error: "O envio de e-mails não está configurado no servidor." };
+  }
+
+  const envio = await sendPasswordCodeEmail({ to: user.email, code: codigo });
+  if (!envio.sent) return { error: "Não foi possível enviar o e-mail com o código. Tente de novo." };
+
+  return { success: `Enviamos um código para ${mascararEmail(user.email)}.` };
+}
+
 const changePasswordSchema = z
   .object({
-    current: z.string().min(1, "Informe a senha atual."),
+    code: z.string().trim().regex(/^\d{6}$/, "O código tem 6 números."),
     password: z
       .string()
       .min(8, "A nova senha precisa de pelo menos 8 caracteres.")
       .max(72, "A senha pode ter no máximo 72 caracteres."),
     confirm: z.string(),
   })
-  .refine((v) => v.password === v.confirm, { message: "As senhas novas não coincidem." })
-  .refine((v) => v.password !== v.current, {
-    message: "A nova senha precisa ser diferente da atual.",
-  });
+  .refine((v) => v.password === v.confirm, { message: "As senhas não coincidem." });
 
-/**
- * Troca de senha em Configurações, com a pessoa já logada. Confere a senha
- * atual antes — assim um computador deixado aberto não basta para alguém
- * trocar a senha e tomar a conta.
- */
+/** Passo 2: com o código certo, troca a senha. */
 export async function changePasswordAction(
   _prev: AuthState,
   formData: FormData,
 ): Promise<AuthState> {
   const parsed = changePasswordSchema.safeParse({
-    current: formData.get("current"),
+    code: formData.get("code"),
     password: formData.get("password"),
     confirm: formData.get("confirm"),
   });
@@ -229,13 +261,21 @@ export async function changePasswordAction(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user?.email) return { error: "Sessão expirada. Entre de novo." };
+  if (!user) return { error: "Sessão expirada. Entre de novo." };
 
-  const { error: erroAtual } = await supabase.auth.signInWithPassword({
-    email: user.email,
-    password: parsed.data.current,
-  });
-  if (erroAtual) return { error: "A senha atual está incorreta." };
+  let resultado: string | null = null;
+  try {
+    const { data } = await supabase.rpc("check_password_code", {
+      p_hmac: hmacDoCodigo(user.id, parsed.data.code),
+    });
+    resultado = data;
+  } catch {
+    return { error: "O envio de e-mails não está configurado no servidor." };
+  }
+
+  if (resultado === "invalido") return { error: "Código incorreto. Confira o e-mail e tente de novo." };
+  if (resultado === "tentativas") return { error: "Muitas tentativas erradas. Peça um novo código." };
+  if (resultado !== "ok") return { error: "O código expirou. Peça um novo." };
 
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
   if (error) return { error: translateAuthError(error.message) };
