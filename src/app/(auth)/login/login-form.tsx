@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import { signInAction, type AuthState } from "@/app/actions/auth";
@@ -20,6 +20,18 @@ export function LoginForm({
     error: initialError,
   });
 
+  // O React limpa o formulário depois de cada envio. Guardando o e-mail em
+  // estado, ele continua preenchido quando a senha está errada — só a senha
+  // precisa ser digitada de novo.
+  const [emailDigitado, setEmailDigitado] = useState(email ?? "");
+  const senhaRef = useRef<HTMLInputElement>(null);
+
+  // Errou: leva o cursor direto para a senha.
+  useEffect(() => {
+    if (state.error && emailDigitado) senhaRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
   return (
     <form action={formAction} className="space-y-5">
       {next && <input type="hidden" name="proximo" value={next} />}
@@ -31,7 +43,8 @@ export function LoginForm({
           id="email"
           name="email"
           type="email"
-          defaultValue={email}
+          value={emailDigitado}
+          onChange={(e) => setEmailDigitado(e.target.value)}
           autoComplete="email"
           placeholder="voce@empresa.com"
           required
@@ -40,6 +53,7 @@ export function LoginForm({
 
       <Field label="Senha" htmlFor="password">
         <Input
+          ref={senhaRef}
           id="password"
           name="password"
           type="password"
