@@ -1,21 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, LogOut, Menu, Pin, PinOff, X } from "lucide-react";
+import { ChevronRight, LogOut, Menu, X } from "lucide-react";
 
 import { CompletionBurst } from "@/components/completion-burst";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme";
 import { Avatar, IconButton } from "@/components/ui";
 import { cn } from "@/lib/utils";
-
-const STORAGE_KEY = "chroma-flux-menu-fixo";
-const STORAGE_KEY_ESTREITO = "chroma-flux-menu-fixo-estreito";
-
-/** Mesmo valor do breakpoint `lg` do Tailwind, usado nas classes abaixo. */
-const LARGURA_DESKTOP = "(min-width: 1024px)";
 
 export type NavItem = {
   href: string;
@@ -36,18 +30,10 @@ export type NavItem = {
 /**
  * Casca com barra lateral, compartilhada pelas telas autenticadas.
  *
- * O estado "fixo" é lido do `localStorage` só depois da montagem: no servidor
- * não existe `localStorage`, e desenhar um palpite faria o HTML divergir do
- * que o navegador monta. Até lá a barra aparece aberta, que é o padrão.
- *
- * São dois estados independentes, porque fixar significa coisas diferentes
- * conforme o espaço disponível — e um só valor faria a escolha do computador
- * atravessar a do celular:
- *
- * - Telas largas (≥ `lg`): fixa mostra a barra inteira; solta encolhe para a
- *   trilha de ícones. Padrão: fixa.
- * - Telas estreitas: fixa deixa a barra sempre presente ao lado do conteúdo;
- *   solta é a gaveta sobreposta, que fecha ao navegar. Padrão: solta.
+ * A barra fica sempre fixa e expandida em telas largas (≥ `lg`); não há mais
+ * alternância entre fixar/soltar nem trilha de ícones colapsada. Em telas
+ * estreitas continua como gaveta sobreposta, que abre pelo botão de menu e
+ * fecha ao navegar ou ao tocar fora dela.
  */
 export function SidebarShell({
   titulo,
@@ -80,10 +66,6 @@ export function SidebarShell({
 }) {
   const pathname = usePathname();
   const [mobileAberto, setMobileAberto] = useState(false);
-  const [fixo, setFixo] = useState(true);
-  const [fixoEstreito, setFixoEstreito] = useState(false);
-  const [desktop, setDesktop] = useState(true);
-  const [montado, setMontado] = useState(false);
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
 
   function alternarExpandido(href: string) {
@@ -95,68 +77,23 @@ export function SidebarShell({
     });
   }
 
-  useEffect(() => {
-    const salvo = localStorage.getItem(STORAGE_KEY);
-    if (salvo !== null) setFixo(salvo === "true");
-
-    const salvoEstreito = localStorage.getItem(STORAGE_KEY_ESTREITO);
-    if (salvoEstreito !== null) setFixoEstreito(salvoEstreito === "true");
-
-    // O botão precisa saber qual dos dois estados está governando a tela no
-    // momento. O CSS sozinho não resolve: quem alterna é o clique, não a folha
-    // de estilo.
-    const consulta = window.matchMedia(LARGURA_DESKTOP);
-    setDesktop(consulta.matches);
-    const aoMudar = (evento: MediaQueryListEvent) => setDesktop(evento.matches);
-    consulta.addEventListener("change", aoMudar);
-
-    setMontado(true);
-    return () => consulta.removeEventListener("change", aoMudar);
-  }, []);
-
-  /*
-    A gaveta fecha ao trocar de página — mas só quando está solta, e só quando
-    foi a rota que mudou. Comparar com a rota anterior evita que desafixar com
-    a gaveta aberta a feche na cara de quem acabou de clicar.
-  */
+  // A gaveta fecha ao trocar de página, para não ficar aberta por cima do
+  // conteúdo novo depois de navegar por ela.
   const rotaAnterior = useRef(pathname);
   useEffect(() => {
     if (rotaAnterior.current === pathname) return;
     rotaAnterior.current = pathname;
-    if (!fixoEstreito) setMobileAberto(false);
-  }, [pathname, fixoEstreito]);
-
-  function alternarFixo() {
-    const [proximo, chave, aplicar] = desktop
-      ? ([!fixo, STORAGE_KEY, setFixo] as const)
-      : ([!fixoEstreito, STORAGE_KEY_ESTREITO, setFixoEstreito] as const);
-
-    aplicar(proximo);
-    localStorage.setItem(chave, String(proximo));
-  }
-
-  /** Qual dos dois estados o botão de alfinete representa agora. */
-  const fixoAtual = desktop ? fixo : fixoEstreito;
-
-  const recolhidoDesktop = montado && desktop && !fixo;
+    setMobileAberto(false);
+  }, [pathname]);
 
   const ativo = (item: NavItem) =>
     item.exact ? pathname === item.href : pathname.startsWith(item.href);
 
-  /*
-    A mesma barra serve às três formas de exibição, e cada uma decide se cabem
-    rótulos: larga conforme o alfinete, gaveta sempre com rótulos, fixa em tela
-    estreita sempre na trilha de ícones.
-  */
-  const construirBarra = (recolhido: boolean) => (
+  // A mesma barra serve tanto fixa no desktop quanto na gaveta do celular.
+  const construirBarra = () => (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-fg">
       {/* Cabeçalho */}
-      <div
-        className={cn(
-          "px-3 py-4",
-          recolhido ? "flex flex-col items-center gap-2" : "flex items-center gap-2",
-        )}
-      >
+      <div className="flex items-center gap-2 px-3 py-4">
         {/* A marca é o atalho para o início, em qualquer tela — convenção que
             todo mundo já espera de um logotipo no canto superior. */}
         <Link
@@ -168,68 +105,48 @@ export function SidebarShell({
           <Logo className="h-6 w-auto" />
         </Link>
 
-        {!recolhido &&
-          (cabecalho ?? (
-            <Link
-              href={tituloHref}
-              className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-sidebar-hover"
-            >
-              {tituloDotClass && (
-                <span className={cn("size-2 shrink-0 rounded-full", tituloDotClass)} aria-hidden />
-              )}
-              <span className="truncate text-sm font-medium text-sidebar-fg">{titulo}</span>
-            </Link>
-          ))}
-
-        {/* Fechar só faz sentido na gaveta: com a barra fixa não há o que
-            fechar, e o botão levaria a um estado sem volta. */}
-        {!fixoEstreito && (
-          <div className="lg:hidden">
-            <IconButton
-              label="Fechar menu"
-              onClick={() => setMobileAberto(false)}
-              className="text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-fg"
-            >
-              <X className="size-5" />
-            </IconButton>
-          </div>
+        {cabecalho ?? (
+          <Link
+            href={tituloHref}
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-sidebar-hover"
+          >
+            {tituloDotClass && (
+              <span className={cn("size-2 shrink-0 rounded-full", tituloDotClass)} aria-hidden />
+            )}
+            <span className="truncate text-sm font-medium text-sidebar-fg">{titulo}</span>
+          </Link>
         )}
 
-        {/*
-          Sempre visível, nos dois estados. Escondê-lo ao recolher deixava a
-          barra sem volta: o único caminho de retorno era um botão flutuante
-          que caía por cima do próprio rodapé da barra.
-
-          Em tela estreita ele governa o outro estado — se a barra acompanha o
-          conteúdo ou se some ao navegar.
-        */}
-        <IconButton
-          label={fixoAtual ? "Desafixar menu" : "Fixar menu"}
-          onClick={alternarFixo}
-          className="text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-fg"
-        >
-          {fixoAtual ? <Pin className="size-4" /> : <PinOff className="size-4" />}
-        </IconButton>
+        {/* Fechar só faz sentido na gaveta do celular. */}
+        <div className="lg:hidden">
+          <IconButton
+            label="Fechar menu"
+            onClick={() => setMobileAberto(false)}
+            className="text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-fg"
+          >
+            <X className="size-5" />
+          </IconButton>
+        </div>
       </div>
 
       {/* Navegação */}
       <nav className="min-h-0 flex-1 overflow-y-auto scrollbar-slim px-2 pb-4">
         {grupos.map((grupo, i) => (
           <div key={grupo.rotulo ?? i} className={i > 0 ? "mt-5" : undefined}>
-            {grupo.rotulo && !recolhido && (
+            {grupo.rotulo && (
               <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-sidebar-muted">
                 {grupo.rotulo}
               </p>
             )}
 
-            {grupo.itens.length === 0 && grupo.vazio && !recolhido ? (
+            {grupo.itens.length === 0 && grupo.vazio ? (
               <p className="px-3 text-sm text-sidebar-muted">{grupo.vazio}</p>
             ) : (
               <ul className="space-y-0.5">
                 {grupo.itens.map((item) => {
                   const Icone = item.icon;
                   const selecionado = ativo(item);
-                  const temFilhos = !recolhido && (item.filhos?.length ?? 0) > 0;
+                  const temFilhos = (item.filhos?.length ?? 0) > 0;
                   const aberto = expandidos.has(item.href);
 
                   return (
@@ -238,10 +155,8 @@ export function SidebarShell({
                         <Link
                           href={item.href}
                           aria-current={selecionado ? "page" : undefined}
-                          title={recolhido ? item.label : undefined}
                           className={cn(
                             "flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                            recolhido && "justify-center px-2",
                             selecionado
                               ? "bg-sidebar-active font-medium text-sidebar-fg"
                               : "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-fg",
@@ -255,7 +170,7 @@ export function SidebarShell({
                           ) : (
                             <Icone className="size-4 shrink-0" />
                           )}
-                          {!recolhido && <span className="truncate">{item.label}</span>}
+                          <span className="truncate">{item.label}</span>
                         </Link>
 
                         {/* Botão à parte: clicar no nome navega, clicar na
@@ -317,41 +232,31 @@ export function SidebarShell({
           <Link
             href={acaoRodape.href}
             aria-current={pathname === acaoRodape.href ? "page" : undefined}
-            title={recolhido ? acaoRodape.label : undefined}
             className={cn(
               "mb-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-              recolhido && "justify-center px-2",
               pathname === acaoRodape.href
                 ? "bg-sidebar-active font-medium text-sidebar-fg"
                 : "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-fg",
             )}
           >
             <acaoRodape.icon className="size-4 shrink-0" />
-            {!recolhido && <span className="truncate">{acaoRodape.label}</span>}
+            <span className="truncate">{acaoRodape.label}</span>
           </Link>
         )}
 
-        {!recolhido && (
-          <div className="mb-3">
-            <ThemeToggle />
-          </div>
-        )}
+        <div className="mb-3">
+          <ThemeToggle />
+        </div>
 
-        <div className={cn("flex items-center gap-3", recolhido && "flex-col gap-2")}>
+        <div className="flex items-center gap-3">
           <Avatar id={user.id} name={user.name} email={user.email} size="sm" />
 
-          {!recolhido && (
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-sidebar-fg">
-                {user.name || user.email}
-              </p>
-              {user.papel && (
-                <p className="truncate text-xs text-sidebar-muted">{user.papel}</p>
-              )}
-            </div>
-          )}
-
-          {recolhido && <ThemeToggle compact />}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-sidebar-fg">
+              {user.name || user.email}
+            </p>
+            {user.papel && <p className="truncate text-xs text-sidebar-muted">{user.papel}</p>}
+          </div>
 
           <form action={signOut}>
             <IconButton
@@ -373,55 +278,28 @@ export function SidebarShell({
           tarefa dispara `fireCompletionBurst()`, e é aqui que ela aparece. */}
       <CompletionBurst />
 
-      {/* Desktop */}
-      <aside
-        className={cn(
-          "hidden shrink-0 transition-[width] duration-200 lg:block",
-          recolhidoDesktop ? "w-16" : "w-64",
-        )}
-      >
-        <div
-          className={cn(
-            "fixed inset-y-0 transition-[width] duration-200",
-            recolhidoDesktop ? "w-16" : "w-64",
-          )}
-        >
-          {construirBarra(recolhidoDesktop)}
-        </div>
+      {/* Desktop: sempre fixa e expandida, sem colapsar para trilha de ícones. */}
+      <aside className="hidden w-64 shrink-0 lg:block">
+        <div className="fixed inset-y-0 w-64">{construirBarra()}</div>
       </aside>
 
-      {/*
-        Tela estreita com o menu fixo: a barra entra no fluxo, ao lado do
-        conteúdo, em vez de sobrepô-lo. Vai na trilha de ícones — 256px de
-        rótulos num celular não deixariam página nenhuma para ler.
-      */}
-      {fixoEstreito && (
-        <aside className="w-16 shrink-0 lg:hidden">
-          <div className="fixed inset-y-0 z-30 w-16">{construirBarra(true)}</div>
-        </aside>
-      )}
-
       {/* Gaveta no celular */}
-      {!fixoEstreito && mobileAberto && (
+      {mobileAberto && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div
             className="absolute inset-0 bg-ink-900/50"
             onClick={() => setMobileAberto(false)}
             aria-hidden
           />
-          <div className="absolute inset-y-0 left-0 w-72 shadow-xl">{construirBarra(false)}</div>
+          <div className="absolute inset-y-0 left-0 w-72 shadow-xl">{construirBarra()}</div>
         </div>
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-ink-200 bg-surface px-4 py-3 lg:hidden">
-          {/* Com a barra fixa ao lado não há gaveta para abrir — o título
-              continua, que é ele quem diz onde você está. */}
-          {!fixoEstreito && (
-            <IconButton label="Abrir menu" onClick={() => setMobileAberto(true)}>
-              <Menu className="size-5" />
-            </IconButton>
-          )}
+          <IconButton label="Abrir menu" onClick={() => setMobileAberto(true)}>
+            <Menu className="size-5" />
+          </IconButton>
           <span className="flex min-w-0 items-center gap-2">
             {tituloDotClass && (
               <span className={cn("size-2 shrink-0 rounded-full", tituloDotClass)} aria-hidden />

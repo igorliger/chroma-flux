@@ -18,9 +18,9 @@ const CORES = [
   "oklch(0.7 0.14 235)", // sky
 ];
 
-const N_PARTICULAS = 26;
-const DURACAO_MS = 900;
-const GRAVIDADE = 0.0022; // px/ms²
+const N_PARTICULAS = 90;
+const DURACAO_MS = 2200;
+const GRAVIDADE = 0.0013; // px/ms²
 
 type Particula = {
   x: number;
@@ -103,8 +103,9 @@ export function CompletionBurst() {
       const novas: Particula[] = Array.from({ length: N_PARTICULAS }, () => {
         // Leque para cima, como confete jogado — não uma explosão em todas
         // as direções, que lembraria mais uma detonação que uma comemoração.
-        const angulo = -Math.PI / 2 + (Math.random() - 0.5) * (Math.PI * 0.8);
-        const velocidade = 0.25 + Math.random() * 0.35;
+        // Leque mais aberto e com mais força para cobrir bem mais tela.
+        const angulo = -Math.PI / 2 + (Math.random() - 0.5) * (Math.PI * 1.1);
+        const velocidade = 0.45 + Math.random() * 0.65;
 
         return {
           x: centro.x,
@@ -112,7 +113,7 @@ export function CompletionBurst() {
           vx: Math.cos(angulo) * velocidade,
           vy: Math.sin(angulo) * velocidade,
           cor: CORES[Math.floor(Math.random() * CORES.length)],
-          tamanho: 5 + Math.random() * 4,
+          tamanho: 7 + Math.random() * 7,
           rotacao: Math.random() * Math.PI * 2,
           vRotacao: (Math.random() - 0.5) * 0.012,
           nascimento: performance.now(),
