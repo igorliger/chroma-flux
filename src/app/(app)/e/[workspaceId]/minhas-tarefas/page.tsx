@@ -4,6 +4,7 @@ import { TaskBrowser } from "@/components/workspace/task-browser";
 import { getMyCapabilities, getWorkspaceContext, listMembers, listWorkspaceTasks } from "@/lib/queries";
 import { EMPTY_FILTERS } from "@/lib/filters";
 import { taskPermissions } from "@/lib/permissions";
+import { isResponsible } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Minhas tarefas" };
 
@@ -28,7 +29,7 @@ export default async function MyTasksPage({
     .map((m) => m.profile)
     .filter((p): p is NonNullable<typeof p> => p !== null);
 
-  const mine = tasks.filter((task) => task.assignee_id === user.id);
+  const mine = tasks.filter((task) => isResponsible(task, user.id));
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">

@@ -1,7 +1,7 @@
 import { differenceInCalendarDays, parseISO } from "date-fns";
 
 import type { TaskOverview } from "@/lib/database.types";
-import { PRIORITY_WEIGHT } from "@/lib/utils";
+import { PRIORITY_WEIGHT, isResponsible } from "@/lib/utils";
 
 export type StatusFilter = "all" | "open" | "completed";
 export type DueFilter = "all" | "overdue" | "today" | "week" | "none";
@@ -122,8 +122,8 @@ export function applyFilters(tasks: TaskOverview[], filters: TaskFilters) {
     }
 
     if (filters.assignee === "none") {
-      if (task.assignee_id !== null) return false;
-    } else if (filters.assignee && task.assignee_id !== filters.assignee) {
+      if (task.assignee_id !== null || (task.co_assignee_ids ?? []).length > 0) return false;
+    } else if (filters.assignee && !isResponsible(task, filters.assignee)) {
       return false;
     }
 

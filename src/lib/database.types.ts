@@ -54,6 +54,8 @@ export type TaskRow = {
   title: string;
   description: string;
   assignee_id: string | null;
+  /** Outros responsáveis, além de `assignee_id` (migração 0018). */
+  co_assignee_ids: string[];
   priority: TaskPriority;
   due_date: string | null;
   /** Hora de parede, "HH:MM:SS". Opcional e sempre acompanhada de `due_date`. */
@@ -157,6 +159,7 @@ export type Database = {
           title: string;
           description?: string;
           assignee_id?: string | null;
+          co_assignee_ids?: string[];
           priority?: TaskPriority;
           due_date?: string | null;
           due_time?: string | null;
@@ -175,6 +178,7 @@ export type Database = {
           title?: string;
           description?: string;
           assignee_id?: string | null;
+          co_assignee_ids?: string[];
           priority?: TaskPriority;
           due_date?: string | null;
           due_time?: string | null;

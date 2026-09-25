@@ -258,3 +258,21 @@ export function positionBetween(before?: number, after?: number): number {
   if (after === undefined) return before + 1000;
   return (before + after) / 2;
 }
+
+/** Todos os responsáveis da tarefa: o principal primeiro, depois os demais. */
+export function responsibleIds(task: {
+  assignee_id: string | null;
+  co_assignee_ids?: string[] | null;
+}): string[] {
+  const ids = task.assignee_id ? [task.assignee_id] : [];
+  for (const id of task.co_assignee_ids ?? []) if (!ids.includes(id)) ids.push(id);
+  return ids;
+}
+
+/** A pessoa é responsável (principal ou não) pela tarefa? */
+export function isResponsible(
+  task: { assignee_id: string | null; co_assignee_ids?: string[] | null },
+  userId: string,
+): boolean {
+  return task.assignee_id === userId || (task.co_assignee_ids ?? []).includes(userId);
+}

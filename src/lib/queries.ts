@@ -23,6 +23,7 @@ import type {
   Workspace,
   WorkspaceRole,
 } from "@/lib/database.types";
+import { isResponsible } from "@/lib/utils";
 
 export type { TaskOverview };
 
@@ -738,7 +739,9 @@ export async function listPersonalBoards(userId: string): Promise<PersonalBoard[
       .select("*")
       .in("workspace_id", ids)
       .is("parent_task_id", null)
-      .or(`assignee_id.eq.${userId},and(is_personal.eq.true,created_by.eq.${userId})`)
+      .or(
+        `assignee_id.eq.${userId},co_assignee_ids.cs.{${userId}},and(is_personal.eq.true,created_by.eq.${userId})`,
+      )
       .order("due_date", { ascending: true, nullsFirst: false })
       .limit(1000),
     // Sem `embed` do PostgREST, pelo motivo explicado no topo do arquivo: os
@@ -778,7 +781,7 @@ export async function listPersonalBoards(userId: string): Promise<PersonalBoard[
       (t) => t.workspace_id === m.workspace_id,
     ) as TaskOverview[];
 
-    const designadas = doEspaco.filter((t) => !t.is_personal && t.assignee_id === userId);
+    const designadas = doEspaco.filter((t) => !t.is_personal && isResponsible(t, userId));
     const particulares = doEspaco.filter((t) => t.is_personal && t.created_by === userId);
 
     // Espaços vazios continuam na lista: é neles que a pessoa cria a primeira

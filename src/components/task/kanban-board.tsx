@@ -14,7 +14,7 @@ import {
 } from "@/app/actions/tasks";
 import { recurrenceFromTask, shortRecurrenceLabel } from "@/lib/recurrence";
 import { useNow } from "@/lib/use-now";
-import { cn, dueDateMeta, positionBetween, priorityMeta } from "@/lib/utils";
+import { cn, dueDateMeta, positionBetween, priorityMeta, responsibleIds } from "@/lib/utils";
 import type { TaskPermissions } from "@/lib/permissions";
 import type {
   CustomFieldDefinition,
@@ -229,7 +229,9 @@ export function KanbanBoard({
                 )}
 
                 {doColuna.map((task, index) => {
-                  const assignee = task.assignee_id ? peopleById.get(task.assignee_id) : null;
+                  const responsaveis = responsibleIds(task)
+                    .map((id) => peopleById.get(id))
+                    .filter((p): p is NonNullable<typeof p> => !!p);
                   const priority = priorityMeta(task.priority);
                   const due = dueDateMeta(task.due_date, task.is_completed, task.due_time, now);
                   const anterior = doColuna[index - 1];
@@ -315,12 +317,22 @@ export function KanbanBoard({
                           >
                             <span className={cn("size-1.5 rounded-full", priority.dot)} aria-hidden />
                           </span>
-                          {assignee && (
-                            <span
-                              title={assignee.full_name}
-                              className="inline-flex size-5 items-center justify-center rounded-full bg-ink-200 text-[9px] font-semibold text-ink-700"
-                            >
-                              {(assignee.full_name || assignee.email).slice(0, 1).toUpperCase()}
+                          {responsaveis.length > 0 && (
+                            <span className="flex -space-x-1">
+                              {responsaveis.slice(0, 3).map((pessoa) => (
+                                <span
+                                  key={pessoa.id}
+                                  title={pessoa.full_name || pessoa.email}
+                                  className="inline-flex size-5 items-center justify-center rounded-full bg-ink-200 text-[9px] font-semibold text-ink-700 ring-2 ring-surface"
+                                >
+                                  {(pessoa.full_name || pessoa.email).slice(0, 1).toUpperCase()}
+                                </span>
+                              ))}
+                              {responsaveis.length > 3 && (
+                                <span className="inline-flex size-5 items-center justify-center rounded-full bg-ink-200 text-[9px] font-semibold text-ink-700 ring-2 ring-surface">
+                                  +{responsaveis.length - 3}
+                                </span>
+                              )}
                             </span>
                           )}
                         </div>

@@ -18,7 +18,14 @@ import {
 } from "@/lib/queries";
 import { taskPermissions } from "@/lib/permissions";
 import { EMPTY_FILTERS } from "@/lib/filters";
-import { accentClass, canAdminister, cn, isOverdue } from "@/lib/utils";
+import {
+  accentClass,
+  canAdminister,
+  cn,
+  isOverdue,
+  isResponsible,
+  responsibleIds,
+} from "@/lib/utils";
 import { differenceInCalendarDays, parseISO } from "date-fns";
 
 export const metadata: Metadata = { title: "Painel" };
@@ -50,7 +57,7 @@ export default async function DashboardPage({
     const days = differenceInCalendarDays(parseISO(t.due_date), new Date());
     return days >= 0 && days <= 7;
   });
-  const mine = open.filter((t) => t.assignee_id === user.id);
+  const mine = open.filter((t) => isResponsible(t, user.id));
 
   const completionRate = tasks.length
     ? Math.round((completed.length / tasks.length) * 100)
@@ -97,10 +104,10 @@ export default async function DashboardPage({
 
   // Carga por pessoa — quem está sobrecarregado e quem tem folga.
   // Só conta o que está em aberto: tarefa concluída não pesa mais em ninguém.
-  const semResponsavel = open.filter((t) => !t.assignee_id).length;
+  const semResponsavel = open.filter((t) => responsibleIds(t).length === 0).length;
   const maiorCarga = Math.max(
     semResponsavel,
-    ...people.map((p) => open.filter((t) => t.assignee_id === p.id).length),
+    ...people.map((p) => open.filter((t) => isResponsible(t, p.id)).length),
     1, // evita divisão por zero quando não há nada em aberto
   );
 
@@ -108,14 +115,14 @@ export default async function DashboardPage({
     ...people.map((person) => ({
       key: person.id,
       person,
-      total: open.filter((t) => t.assignee_id === person.id).length,
-      atrasadas: overdue.filter((t) => t.assignee_id === person.id).length,
+      total: open.filter((t) => isResponsible(t, person.id)).length,
+      atrasadas: overdue.filter((t) => isResponsible(t, person.id)).length,
     })),
     {
       key: "sem-responsavel",
       person: null,
       total: semResponsavel,
-      atrasadas: overdue.filter((t) => !t.assignee_id).length,
+      atrasadas: overdue.filter((t) => responsibleIds(t).length === 0).length,
     },
   ]
     // Quem não tem nada em aberto vira ruído numa lista de carga.

@@ -10,6 +10,7 @@ import {
   Plus,
   Trash2,
   User,
+  Users,
   X,
 } from "lucide-react";
 
@@ -128,6 +129,22 @@ export function TaskPanel({
     }
     setLoading(false);
   }, [supabase, task.id]);
+
+  // Outros responsáveis: estado local para a troca aparecer na hora, antes de
+  // a lista recarregar do servidor.
+  const [coIds, setCoIds] = useState<string[]>(task.co_assignee_ids ?? []);
+  const coChave = (task.co_assignee_ids ?? []).join(",");
+  useEffect(() => {
+    setCoIds(task.co_assignee_ids ?? []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task.id, coChave]);
+
+  async function salvarOutros(novos: string[]) {
+    const anteriores = coIds;
+    setCoIds(novos);
+    const ok = await patch({ co_assignee_ids: novos });
+    if (!ok) setCoIds(anteriores);
+  }
 
   useEffect(() => {
     setTitle(task.title);
@@ -361,6 +378,81 @@ export function TaskPanel({
                   ))}
               </Select>
             </Row>
+
+            {!task.is_personal && (
+              <Row icon={<Users className="size-4" />} label="Outros responsáveis">
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  {coIds.map((id) => {
+                    const pessoa = peopleById.get(id);
+                    // Sem "Atribuir a outras pessoas", só dá para tirar a si mesmo.
+                    const podeTirar =
+                      permissoes.edit && (permissoes.assignOthers || id === currentUserId);
+                    return (
+                      <span
+                        key={id}
+                        className="inline-flex items-center gap-1 rounded-full bg-ink-100 py-0.5 pl-0.5 pr-2 text-xs text-ink-700"
+                      >
+                        {pessoa && (
+                          <Avatar
+                            id={pessoa.id}
+                            name={pessoa.full_name}
+                            email={pessoa.email}
+                            size="xs"
+                          />
+                        )}
+                        {pessoa?.full_name || pessoa?.email || "Pessoa removida"}
+                        {podeTirar && (
+                          <button
+                            type="button"
+                            onClick={() => salvarOutros(coIds.filter((x) => x !== id))}
+                            aria-label={`Remover ${pessoa?.full_name || "responsável"}`}
+                            className="ml-0.5 rounded-full text-ink-400 hover:text-ink-700"
+                          >
+                            <X className="size-3" aria-hidden />
+                          </button>
+                        )}
+                      </span>
+                    );
+                  })}
+
+                  {permissoes.edit &&
+                    (() => {
+                      const disponiveis = people.filter(
+                        (p) =>
+                          p.id !== task.assignee_id &&
+                          !coIds.includes(p.id) &&
+                          (permissoes.assignOthers || p.id === currentUserId),
+                      );
+                      if (disponiveis.length === 0) {
+                        return coIds.length === 0 ? (
+                          <span className="text-sm text-ink-400">Ninguém</span>
+                        ) : null;
+                      }
+                      return (
+                        <Select
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) salvarOutros([...coIds, e.target.value]);
+                          }}
+                          aria-label="Adicionar outro responsável"
+                          className="h-8 w-auto max-w-44 text-xs"
+                        >
+                          <option value="">+ Adicionar</option>
+                          {disponiveis.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.full_name || p.email}
+                            </option>
+                          ))}
+                        </Select>
+                      );
+                    })()}
+
+                  {!permissoes.edit && coIds.length === 0 && (
+                    <span className="text-sm text-ink-400">Ninguém</span>
+                  )}
+                </div>
+              </Row>
+            )}
 
             <Row icon={<Flag className="size-4" />} label="Prioridade">
               <div className="flex items-center gap-2">

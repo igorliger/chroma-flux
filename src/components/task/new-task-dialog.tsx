@@ -119,6 +119,19 @@ export function NewTaskDialog({
             </Select>
           </Field>
 
+          {!isPersonal && !onlyAssigneeId && people.length > 1 && (
+            <Field label="Mais um responsável" htmlFor="task-co-assignee" hint="Opcional.">
+              <Select id="task-co-assignee" name="coAssigneeIds" defaultValue="">
+                <option value="">Ninguém</option>
+                {people.map((person) => (
+                  <option key={person.id} value={person.id}>
+                    {person.full_name || person.email}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )}
+
           <Field label="Prioridade" htmlFor="task-priority">
             <Select id="task-priority" name="priority" defaultValue="medium">
               {PRIORITIES.map((p) => (

@@ -13,7 +13,7 @@ import {
 import { Avatar, EmptyState } from "@/components/ui";
 import { recurrenceFromTask, shortRecurrenceLabel } from "@/lib/recurrence";
 import { useNow } from "@/lib/use-now";
-import { cn, dueDateMeta, priorityMeta } from "@/lib/utils";
+import { cn, dueDateMeta, priorityMeta, responsibleIds } from "@/lib/utils";
 import type { PersonRef, TaskOverview } from "@/lib/database.types";
 
 /**
@@ -57,7 +57,9 @@ export function TaskList({
   return (
     <ul className="divide-y divide-ink-100 overflow-hidden rounded-[--radius-card] border border-ink-200 bg-surface">
       {tasks.map((task) => {
-        const assignee = task.assignee_id ? peopleById.get(task.assignee_id) : null;
+        const responsaveis = responsibleIds(task)
+          .map((id) => peopleById.get(id))
+          .filter((p): p is PersonRef => !!p);
         const priority = priorityMeta(task.priority);
         const due = dueDateMeta(task.due_date, task.is_completed, task.due_time, now);
 
@@ -179,13 +181,24 @@ export function TaskList({
                   <span className={cn("size-1.5 rounded-full", priority.dot)} aria-hidden />
                   <span className="hidden sm:inline">{priority.label}</span>
                 </span>
-                {assignee ? (
-                  <Avatar
-                    id={assignee.id}
-                    name={assignee.full_name}
-                    email={assignee.email}
-                    size="sm"
-                  />
+                {responsaveis.length > 0 ? (
+                  <span className="flex -space-x-1.5">
+                    {responsaveis.slice(0, 3).map((pessoa) => (
+                      <Avatar
+                        key={pessoa.id}
+                        id={pessoa.id}
+                        name={pessoa.full_name}
+                        email={pessoa.email}
+                        size="sm"
+                        className="ring-2 ring-surface"
+                      />
+                    ))}
+                    {responsaveis.length > 3 && (
+                      <span className="inline-flex size-6 items-center justify-center rounded-full bg-ink-200 text-[10px] font-semibold text-ink-700 ring-2 ring-surface">
+                        +{responsaveis.length - 3}
+                      </span>
+                    )}
+                  </span>
                 ) : (
                   <span className="size-6 rounded-full border border-dashed border-ink-300" />
                 )}
