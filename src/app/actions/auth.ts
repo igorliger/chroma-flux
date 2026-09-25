@@ -194,3 +194,51 @@ export async function updateProfileAction(
   revalidatePath("/", "layout");
   return { success: "Perfil atualizado." };
 }
+
+const changePasswordSchema = z
+  .object({
+    current: z.string().min(1, "Informe a senha atual."),
+    password: z
+      .string()
+      .min(8, "A nova senha precisa de pelo menos 8 caracteres.")
+      .max(72, "A senha pode ter no máximo 72 caracteres."),
+    confirm: z.string(),
+  })
+  .refine((v) => v.password === v.confirm, { message: "As senhas novas não coincidem." })
+  .refine((v) => v.password !== v.current, {
+    message: "A nova senha precisa ser diferente da atual.",
+  });
+
+/**
+ * Troca de senha em Configurações, com a pessoa já logada. Confere a senha
+ * atual antes — assim um computador deixado aberto não basta para alguém
+ * trocar a senha e tomar a conta.
+ */
+export async function changePasswordAction(
+  _prev: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  const parsed = changePasswordSchema.safeParse({
+    current: formData.get("current"),
+    password: formData.get("password"),
+    confirm: formData.get("confirm"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) return { error: "Sessão expirada. Entre de novo." };
+
+  const { error: erroAtual } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: parsed.data.current,
+  });
+  if (erroAtual) return { error: "A senha atual está incorreta." };
+
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+  if (error) return { error: translateAuthError(error.message) };
+
+  return { success: "Senha alterada." };
+}

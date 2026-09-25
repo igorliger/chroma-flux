@@ -21,6 +21,7 @@ import { AccessGroupsPanel } from "./access-groups-panel";
 import { TeamInviteForm } from "./team-invite-form";
 import { TeamPanel } from "./team-panel";
 import { PermissionsMatrix } from "./permissions-matrix";
+import { PasswordForm } from "./password-form";
 import { ProfileForm } from "./profile-form";
 
 export const metadata: Metadata = { title: "Configurações" };
@@ -96,6 +97,14 @@ export default async function ConfiguracoesPage() {
             fullName={perfil?.full_name ?? ""}
             email={user.email ?? perfil?.email ?? ""}
           />
+        </Card>
+
+        <Card className="mt-6">
+          <h2 className="font-semibold text-ink-900">Alterar senha</h2>
+          <p className="mb-4 mt-1 text-sm text-ink-500">
+            Para trocar, confirme primeiro a senha que você usa hoje.
+          </p>
+          <PasswordForm />
         </Card>
 
         <Card className="mt-6">
