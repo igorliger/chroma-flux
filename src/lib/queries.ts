@@ -1018,3 +1018,14 @@ export async function acceptMyTeamInvitations(): Promise<number> {
   if (error) return 0;
   return data ?? 0;
 }
+
+/**
+ * Pode criar espaço? Quem decide é o banco (`can_create_workspace`): membros
+ * de equipe só criam se forem proprietários ou administradores em algum.
+ */
+export async function canICreateWorkspace(): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("can_create_workspace");
+  if (error) return false;
+  return data === true;
+}

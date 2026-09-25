@@ -105,6 +105,7 @@ export async function sendTeamInviteEmail(params: {
   to: string;
   inviterName: string;
   workspaceNames: string[];
+  invitationId: string;
 }): Promise<SendInviteEmailResult> {
   const resend = getResendClient();
   if (!resend) {
@@ -113,7 +114,7 @@ export async function sendTeamInviteEmail(params: {
   }
 
   const siteUrl = getSiteUrl();
-  const { to, inviterName, workspaceNames } = params;
+  const { to, inviterName, workspaceNames, invitationId } = params;
   const espacos = workspaceNames.length
     ? `<p style="font-size: 14px; line-height: 1.6; color: #4b5566;">Você já terá acesso a: <strong>${workspaceNames.join(", ")}</strong>.</p>`
     : "";
@@ -132,11 +133,10 @@ export async function sendTeamInviteEmail(params: {
         </p>
         ${espacos}
         <p style="font-size: 14px; line-height: 1.6; color: #4b5566;">
-          Entre (ou crie sua conta) com o e-mail <strong>${to}</strong> — o convite é
-          aceito automaticamente.
+          É só clicar no botão abaixo — sem cadastro e sem senha.
         </p>
         <a
-          href="${siteUrl}/cadastro"
+          href="${siteUrl}/convite/${invitationId}"
           style="display: inline-block; margin-top: 16px; padding: 10px 20px; background: #7c5cff; color: #fff; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 600;"
         >
           Entrar no Chroma Flux

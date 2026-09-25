@@ -77,12 +77,16 @@ export async function inviteToTeamAction(
     }
   }
 
-  const { error } = await supabase.from("team_invitations").insert({
-    owner_id: user.id,
-    email: email.data,
-    workspace_roles: workspaceRoles,
-    invited_by: user.id,
-  });
+  const { data: criado, error } = await supabase
+    .from("team_invitations")
+    .insert({
+      owner_id: user.id,
+      email: email.data,
+      workspace_roles: workspaceRoles,
+      invited_by: user.id,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     if (error.code === "23505") {
@@ -92,7 +96,7 @@ export async function inviteToTeamAction(
   }
 
   revalidarTudo();
-  const envio = await enviarEmail(email.data, workspaceRoles, espacos);
+  const envio = await enviarEmail(criado.id, email.data, workspaceRoles, espacos);
 
   return envio.sent
     ? { success: `Convite enviado por e-mail para ${email.data}.` }
@@ -105,6 +109,7 @@ export async function inviteToTeamAction(
 }
 
 async function enviarEmail(
+  invitationId: string,
   email: string,
   workspaceRoles: Record<string, WorkspaceRole>,
   espacos: { id: string; name: string }[],
@@ -121,6 +126,7 @@ async function enviarEmail(
     to: email,
     inviterName: eu?.full_name || eu?.email || "Alguém",
     workspaceNames: espacos.filter((e) => workspaceRoles[e.id]).map((e) => e.name),
+    invitationId,
   });
 }
 
@@ -136,6 +142,7 @@ export async function resendTeamInviteAction(invitationId: string): Promise<Team
   if (!convite) return { error: "Convite não encontrado." };
 
   const envio = await enviarEmail(
+    invitationId,
     convite.email,
     (convite.workspace_roles ?? {}) as Record<string, WorkspaceRole>,
     espacos,

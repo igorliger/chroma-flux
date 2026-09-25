@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Entrar" };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ proximo?: string; erro?: string }>;
+  searchParams: Promise<{ proximo?: string; erro?: string; email?: string }>;
 }) {
   const params = await searchParams;
 
@@ -26,7 +26,7 @@ export default async function LoginPage({
         </p>
       </div>
 
-      <LoginForm next={params.proximo} initialError={params.erro} />
+      <LoginForm next={params.proximo} initialError={params.erro} email={params.email} />
     </>
   );
 }

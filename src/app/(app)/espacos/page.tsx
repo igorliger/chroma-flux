@@ -9,11 +9,12 @@ import { Button, Card, EmptyState, FormError } from "@/components/ui";
 import {
   getMyProfile,
   acceptMyTeamInvitations,
+  canICreateWorkspace,
   listPendingInvitations,
   listWorkspaces,
   requireUser,
 } from "@/lib/queries";
-import { accentClass, canCreateWorkspace, roleLabel } from "@/lib/utils";
+import { accentClass, roleLabel } from "@/lib/utils";
 
 import { NewWorkspaceButton } from "./workspace-dialog";
 
@@ -36,8 +37,9 @@ export default async function WorkspacesPage({
   ]);
 
   const perfil = await getMyProfile();
-  // Membros comuns não criam espaços — só proprietários e administradores.
-  const podeCriar = canCreateWorkspace(workspaces.map((w) => w.role));
+  // Membros não criam espaços — só proprietários e administradores. Quem
+  // decide é o banco, que também sabe de equipe e convites pendentes.
+  const podeCriar = await canICreateWorkspace();
 
   return (
     <WorkspacesShell
@@ -107,8 +109,12 @@ export default async function WorkspacesPage({
             <EmptyState
               icon={<LayoutGrid className="size-10" />}
               title="Nenhum espaço de trabalho ainda"
-              description="Crie o primeiro espaço para começar a organizar as tarefas da sua equipe."
-              action={<NewWorkspaceButton />}
+              description={
+                podeCriar
+                  ? "Crie o primeiro espaço para começar a organizar as tarefas da sua equipe."
+                  : "Você ainda não foi colocado em nenhum espaço. Quando o responsável pela equipe liberar o acesso, ele aparece aqui."
+              }
+              action={podeCriar ? <NewWorkspaceButton /> : undefined}
             />
           ) : (
             <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -3,7 +3,9 @@ import { createServerClient } from "@supabase/ssr";
 
 import { getSupabasePublishableKey, getSupabaseUrl, isSupabaseConfigured } from "@/lib/env";
 
-const PUBLIC_ROUTES = ["/login", "/cadastro", "/auth", "/recuperar-senha"];
+// "/convite": página do link do e-mail de convite — quem chega nela ainda
+// não tem conta ou não está logado.
+const PUBLIC_ROUTES = ["/login", "/cadastro", "/auth", "/recuperar-senha", "/convite"];
 
 function isPublic(pathname: string) {
   return pathname === "/" || PUBLIC_ROUTES.some((route) => pathname.startsWith(route));

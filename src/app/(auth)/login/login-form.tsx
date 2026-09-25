@@ -6,7 +6,16 @@ import Link from "next/link";
 import { signInAction, type AuthState } from "@/app/actions/auth";
 import { Field, FormError, Input, SubmitButton } from "@/components/ui";
 
-export function LoginForm({ next, initialError }: { next?: string; initialError?: string }) {
+export function LoginForm({
+  next,
+  initialError,
+  email,
+}: {
+  next?: string;
+  initialError?: string;
+  /** Preenchido quando vem do link do convite. */
+  email?: string;
+}) {
   const [state, formAction] = useActionState<AuthState, FormData>(signInAction, {
     error: initialError,
   });
@@ -22,6 +31,7 @@ export function LoginForm({ next, initialError }: { next?: string; initialError?
           id="email"
           name="email"
           type="email"
+          defaultValue={email}
           autoComplete="email"
           placeholder="voce@empresa.com"
           required

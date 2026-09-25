@@ -522,6 +522,19 @@ export type Database = {
         Args: Record<string, never>;
         Returns: boolean;
       };
+      can_create_workspace: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      team_invite_preview: {
+        Args: { p_id: string };
+        Returns: {
+          email: string;
+          inviter_name: string;
+          workspace_names: string[];
+          valid: boolean;
+        }[];
+      };
       accept_my_team_invitations: {
         Args: Record<string, never>;
         Returns: number;
