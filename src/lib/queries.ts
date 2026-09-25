@@ -908,3 +908,23 @@ export async function listCustomFieldValues(
 
   return porTarefa;
 }
+
+/**
+ * Quem já faz parte da empresa (está em algum espaço do mesmo proprietário)
+ * e ainda não está neste espaço — pode ser adicionado direto, sem convite.
+ * Vazio para quem não administra o espaço.
+ */
+export async function listCompanyPeople(
+  workspaceId: string,
+): Promise<{ id: string; name: string; email: string }[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_company_people", {
+    p_workspace_id: workspaceId,
+  });
+  if (error) return [];
+  return (data ?? []).map((p) => ({
+    id: p.id,
+    name: p.full_name || p.email || "Sem nome",
+    email: p.email ?? "",
+  }));
+}

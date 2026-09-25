@@ -123,6 +123,30 @@ export async function inviteMemberAction(
   const user = await requireUser();
   const supabase = await createClient();
 
+  // Quem já faz parte da empresa (está em outro espaço do mesmo proprietário)
+  // entra direto: o convite por e-mail é feito uma vez só, na primeira vez.
+  const { data: daEmpresa } = await supabase.rpc("list_company_people", {
+    p_workspace_id: parsed.data.workspaceId,
+  });
+  const jaNaEmpresa = (daEmpresa ?? []).find(
+    (p) => (p.email ?? "").toLowerCase() === parsed.data.email.toLowerCase(),
+  );
+  if (jaNaEmpresa) {
+    const { error: erroMembro } = await supabase.from("workspace_members").insert({
+      workspace_id: parsed.data.workspaceId,
+      user_id: jaNaEmpresa.id,
+      role: parsed.data.role,
+    });
+    if (erroMembro) return { error: membroErro(erroMembro.code, erroMembro.message) };
+    revalidatePath(`/e/${parsed.data.workspaceId}/membros`);
+    revalidatePath("/configuracoes");
+    return {
+      success:
+        `${jaNaEmpresa.full_name || parsed.data.email} já faz parte da equipe e foi ` +
+        `adicionado(a) direto a este espaço — sem precisar de novo convite.`,
+    };
+  }
+
   const { error } = await supabase.from("workspace_invitations").insert({
     workspace_id: parsed.data.workspaceId,
     email: parsed.data.email,
@@ -389,4 +413,44 @@ export async function cancelInvitationAction(invitationId: string): Promise<{ er
   revalidatePath("/configuracoes");
   revalidatePath(`/e/${data[0].workspace_id}/membros`);
   return {};
+}
+
+/** Adiciona ao espaço alguém que já faz parte da empresa — sem convite. */
+export async function addTeamMemberAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = z
+    .object({
+      workspaceId: z.string().uuid(),
+      userId: z.string().uuid("Escolha uma pessoa."),
+      role: funcaoConvidado,
+    })
+    .safeParse({
+      workspaceId: formData.get("workspaceId"),
+      userId: formData.get("userId"),
+      role: formData.get("role"),
+    });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const supabase = await createClient();
+
+  // Só aceita quem a lista oferece: evita adicionar um id qualquer de fora
+  // da empresa mandando o formulário na mão.
+  const { data: daEmpresa } = await supabase.rpc("list_company_people", {
+    p_workspace_id: parsed.data.workspaceId,
+  });
+  const pessoa = (daEmpresa ?? []).find((p) => p.id === parsed.data.userId);
+  if (!pessoa) return { error: "Essa pessoa não está disponível para este espaço." };
+
+  const { error } = await supabase.from("workspace_members").insert({
+    workspace_id: parsed.data.workspaceId,
+    user_id: parsed.data.userId,
+    role: parsed.data.role,
+  });
+  if (error) return { error: membroErro(error.code, error.message) };
+
+  revalidatePath(`/e/${parsed.data.workspaceId}/membros`);
+  revalidatePath("/configuracoes");
+  return { success: `${pessoa.full_name || pessoa.email} foi adicionado(a) ao espaço.` };
 }

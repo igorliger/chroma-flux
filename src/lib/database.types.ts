@@ -493,6 +493,10 @@ export type Database = {
         Args: Record<string, never>;
         Returns: boolean;
       };
+      list_company_people: {
+        Args: { p_workspace_id: string };
+        Returns: { id: string; full_name: string | null; email: string | null }[];
+      };
       register_push_subscription: {
         Args: { p_endpoint: string; p_p256dh: string; p_auth: string; p_user_agent: string };
         Returns: undefined;

@@ -1907,6 +1907,781 @@ grant execute on function public.is_blocked_by_access_window() to authenticated;
 revoke execute on function public.is_blocked_by_access_window() from anon, public;
 
 
+-- >>> incorporado de migrations/0016_push_notifications.sql
+-- =============================================================================
+-- 0016 — Notificações no navegador / sistema operacional (Web Push)
+-- =============================================================================
+-- O envio em si é feito pela Edge Function `push` (supabase/functions/push).
+-- Aqui ficam:
+--   * as assinaturas de cada dispositivo (`push_subscriptions`);
+--   * o registro do que já foi enviado, para não repetir aviso (`notification_log`);
+--   * o gatilho que avisa quando uma tarefa é concluída;
+--   * o agendamento (pg_cron) que, a cada 5 minutos, manda os lembretes.
+--
+-- Segredos (chave privada VAPID e o segredo que autentica o banco perante a
+-- função) ficam no Supabase Vault, NUNCA neste arquivo — ele vai para o git.
+-- Os nomes esperados no Vault são:
+--   push_vapid_public_key, push_vapid_private_key, push_webhook_secret
+--
+-- É seguro rodar de novo.
+
+create extension if not exists pg_net;
+create extension if not exists pg_cron;
+
+-- -----------------------------------------------------------------------------
+-- Assinaturas (um registro por navegador/dispositivo)
+-- -----------------------------------------------------------------------------
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  user_agent text,
+  created_at timestamptz not null default now(),
+  last_used_at timestamptz
+);
+
+create index if not exists push_subscriptions_user_idx
+  on public.push_subscriptions (user_id);
+
+alter table public.push_subscriptions enable row level security;
+
+-- Cada um só enxerga e apaga os próprios dispositivos. Gravar passa pela
+-- função abaixo (o mesmo navegador pode trocar de conta).
+drop policy if exists push_subscriptions_select on public.push_subscriptions;
+create policy push_subscriptions_select on public.push_subscriptions
+  for select to authenticated using (user_id = auth.uid());
+
+drop policy if exists push_subscriptions_delete on public.push_subscriptions;
+create policy push_subscriptions_delete on public.push_subscriptions
+  for delete to authenticated using (user_id = auth.uid());
+
+-- Registra (ou transfere para quem está logado) a assinatura deste navegador.
+-- SECURITY DEFINER porque, num computador compartilhado, o mesmo endpoint pode
+-- estar registrado em nome de outra conta — e a RLS não deixaria mexer nele.
+-- Quem entrou por último é quem passa a receber os avisos neste aparelho.
+create or replace function public.register_push_subscription(
+  p_endpoint text, p_p256dh text, p_auth text, p_user_agent text
+)
+returns void
+language plpgsql
+volatile
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'não autenticado' using errcode = '42501';
+  end if;
+
+  insert into public.push_subscriptions (user_id, endpoint, p256dh, auth, user_agent)
+  values (auth.uid(), p_endpoint, p_p256dh, p_auth, left(p_user_agent, 300))
+  on conflict (endpoint) do update
+    set user_id = excluded.user_id,
+        p256dh = excluded.p256dh,
+        auth = excluded.auth,
+        user_agent = excluded.user_agent,
+        created_at = now();
+end;
+$$;
+
+grant execute on function public.register_push_subscription(text, text, text, text) to authenticated;
+revoke execute on function public.register_push_subscription(text, text, text, text) from anon, public;
+
+-- -----------------------------------------------------------------------------
+-- O que já foi avisado (só a função/serviço lê e grava)
+-- -----------------------------------------------------------------------------
+create table if not exists public.notification_log (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  kind text not null,
+  ref text not null,
+  sent_at timestamptz not null default now(),
+  primary key (user_id, kind, ref)
+);
+
+alter table public.notification_log enable row level security;
+-- Sem policies de propósito: ninguém pelo site lê ou grava aqui.
+
+-- -----------------------------------------------------------------------------
+-- Janela de uso por usuário (sem depender de auth.uid())
+-- -----------------------------------------------------------------------------
+-- Mesma regra de `is_blocked_by_access_window()`, mas para qualquer pessoa —
+-- usada pelos lembretes, que rodam sem sessão. Não é exposta pela API.
+create or replace function public.is_user_blocked_by_access_window(p_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select
+    not exists (select 1 from public.workspaces w where w.owner_id = p_user_id)
+    and exists (
+      select 1
+      from public.workspace_members m
+      join public.workspaces w on w.id = m.workspace_id
+      where m.user_id = p_user_id
+        and not public.within_access_window(w.owner_id, p_user_id)
+    );
+$$;
+
+revoke execute on function public.is_user_blocked_by_access_window(uuid)
+  from anon, authenticated, public;
+
+-- -----------------------------------------------------------------------------
+-- Configuração lida pela Edge Function (só service_role)
+-- -----------------------------------------------------------------------------
+create or replace function public.get_push_config()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public, vault, pg_temp
+as $$
+  select jsonb_build_object(
+    'vapid_public_key', (select decrypted_secret from vault.decrypted_secrets where name = 'push_vapid_public_key'),
+    'vapid_private_key', (select decrypted_secret from vault.decrypted_secrets where name = 'push_vapid_private_key'),
+    'webhook_secret', (select decrypted_secret from vault.decrypted_secrets where name = 'push_webhook_secret')
+  );
+$$;
+
+revoke execute on function public.get_push_config() from anon, authenticated, public;
+grant execute on function public.get_push_config() to service_role;
+
+-- -----------------------------------------------------------------------------
+-- Chamada à Edge Function (usada pelo gatilho e pelo agendamento)
+-- -----------------------------------------------------------------------------
+-- pg_net é assíncrono: a gravação da tarefa não espera o envio nem falha se a
+-- função estiver fora do ar.
+create or replace function public.call_push_function(p_body jsonb)
+returns void
+language plpgsql
+volatile
+security definer
+set search_path = public, vault, pg_temp
+as $$
+declare
+  segredo text;
+begin
+  select decrypted_secret into segredo
+  from vault.decrypted_secrets where name = 'push_webhook_secret';
+
+  if segredo is null then
+    return; -- ainda não configurado: não faz nada
+  end if;
+
+  perform net.http_post(
+    url := 'https://zdkgujlkdtxiabxntuce.supabase.co/functions/v1/push',
+    body := p_body,
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-flux-secret', segredo
+    ),
+    timeout_milliseconds := 10000
+  );
+end;
+$$;
+
+revoke execute on function public.call_push_function(jsonb) from anon, authenticated, public;
+
+-- -----------------------------------------------------------------------------
+-- Aviso de tarefa concluída
+-- -----------------------------------------------------------------------------
+-- Só na virada de "aberta" para "concluída", e não para tarefas particulares
+-- (não há a quem avisar). Quem concluiu vai junto: é ele quem não recebe.
+create or replace function public.tasks_notify_completed()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if new.is_completed and not coalesce(old.is_completed, false) and not new.is_personal then
+    perform public.call_push_function(jsonb_build_object(
+      'type', 'completed',
+      'task_id', new.id,
+      'completed_by', auth.uid()
+    ));
+  end if;
+  return new;
+end;
+$$;
+
+revoke execute on function public.tasks_notify_completed() from anon, authenticated, public;
+
+drop trigger if exists tasks_notify_completed on public.tasks;
+create trigger tasks_notify_completed
+  after update of is_completed on public.tasks
+  for each row execute function public.tasks_notify_completed();
+
+-- -----------------------------------------------------------------------------
+-- Lembretes de tarefas a concluir
+-- -----------------------------------------------------------------------------
+-- Devolve os lembretes que devem sair AGORA e já os marca como enviados no
+-- mesmo comando — se duas execuções se sobrepuserem, cada lembrete sai uma
+-- vez só. Horário de Brasília.
+--
+--   due_soon: tarefa com hora marcada, vencendo nos próximos 15 minutos.
+--   digest:   uma vez por dia, a partir das 08:00, resumo de quantas tarefas
+--             vencem hoje e quantas estão atrasadas.
+--
+-- Vai para o responsável (ou para quem criou, se não houver responsável),
+-- só para quem tem algum dispositivo com notificação ativada e não está fora
+-- da janela de uso — quem está fora recebe o resumo quando a janela abrir.
+create or replace function public.claim_push_reminders()
+returns table (user_id uuid, kind text, ref text, title text, body text, url text)
+language plpgsql
+volatile
+security definer
+set search_path = public, pg_temp
+as $$
+#variable_conflict use_column
+declare
+  agora timestamp := (now() at time zone 'America/Sao_Paulo');
+  hoje date := agora::date;
+begin
+  -- O registro só precisa lembrar o suficiente para não repetir aviso.
+  delete from public.notification_log where sent_at < now() - interval '30 days';
+
+  return query
+  with alvo as (
+    select t.*, coalesce(t.assignee_id, t.created_by) as destinatario
+    from public.tasks t
+    where not t.is_completed
+      and t.due_date is not null
+      and t.due_date <= hoje + 1
+  ),
+  com_dispositivo as (
+    select distinct s.user_id from public.push_subscriptions s
+  ),
+  candidatos as (
+    -- Vencendo nos próximos 15 minutos
+    select
+      a.destinatario as user_id,
+      'due_soon'::text as kind,
+      a.id::text || ':' || a.due_date::text as ref,
+      'Tarefa vencendo às ' || to_char(a.due_date + a.due_time, 'HH24:MI') as title,
+      a.title as body,
+      case when a.is_personal then '/minhas-tarefas'
+           else '/e/' || a.workspace_id::text || '/tarefas' end as url
+    from alvo a
+    where a.due_time is not null
+      and (a.due_date + a.due_time) > agora
+      and (a.due_date + a.due_time) <= agora + interval '15 minutes'
+
+    union all
+
+    -- Resumo do dia
+    select
+      r.destinatario,
+      'digest',
+      hoje::text,
+      'Suas tarefas de hoje',
+      case
+        when r.hoje_n > 0 and r.atrasadas > 0 then
+          'Você tem ' || r.hoje_n || case when r.hoje_n = 1 then ' tarefa' else ' tarefas' end ||
+          ' para hoje e ' || r.atrasadas || case when r.atrasadas = 1 then ' atrasada.' else ' atrasadas.' end
+        when r.hoje_n > 0 then
+          'Você tem ' || r.hoje_n || case when r.hoje_n = 1 then ' tarefa' else ' tarefas' end || ' para hoje.'
+        else
+          'Você tem ' || r.atrasadas || case when r.atrasadas = 1 then ' tarefa atrasada.' else ' tarefas atrasadas.' end
+      end,
+      '/minhas-tarefas'
+    from (
+      select
+        a.destinatario,
+        count(*) filter (where a.due_date = hoje) as hoje_n,
+        count(*) filter (where a.due_date < hoje) as atrasadas
+      from alvo a
+      group by a.destinatario
+    ) r
+    where agora::time >= time '08:00'
+      and agora::time < time '20:00'
+      and (r.hoje_n > 0 or r.atrasadas > 0)
+  ),
+  filtrados as (
+    select c.*
+    from candidatos c
+    join com_dispositivo d on d.user_id = c.user_id
+    where not public.is_user_blocked_by_access_window(c.user_id)
+  ),
+  marcados as (
+    insert into public.notification_log (user_id, kind, ref)
+    select f.user_id, f.kind, f.ref from filtrados f
+    on conflict do nothing
+    returning notification_log.user_id, notification_log.kind, notification_log.ref
+  )
+  select f.user_id, f.kind, f.ref, f.title, f.body, f.url
+  from filtrados f
+  join marcados m using (user_id, kind, ref);
+end;
+$$;
+
+revoke execute on function public.claim_push_reminders() from anon, authenticated, public;
+grant execute on function public.claim_push_reminders() to service_role;
+
+-- A cada 5 minutos a função é chamada para enviar os lembretes pendentes.
+select cron.unschedule(jobid) from cron.job where jobname = 'push-reminders';
+select cron.schedule(
+  'push-reminders',
+  '*/5 * * * *',
+  $$ select public.call_push_function('{"type":"reminders"}'::jsonb) $$
+);
+
+
+-- >>> incorporado de migrations/0017_restrict_task_assignment.sql
+-- =============================================================================
+-- 0017 — Membros só criam tarefas para si mesmos
+-- =============================================================================
+-- Nova capacidade na matriz de permissões: `task.assign_others` ("Atribuir
+-- tarefas a outras pessoas"). Vem ligada para proprietário e administrador e
+-- desligada para membro e visualizador. Sem ela:
+--   * ao criar, a tarefa fica com a própria pessoa como responsável (se vier
+--     sem responsável, é preenchida com ela; outro nome é recusado);
+--   * ao editar, dá para assumir a tarefa, mas não passá-la para outra pessoa
+--     nem deixá-la sem responsável.
+-- Tarefas particulares e escritas internas (a próxima ocorrência de uma
+-- tarefa repetida) não passam por esta regra.
+--
+-- É seguro rodar de novo.
+
+-- Padrão para matrizes novas.
+create or replace function public.default_permissions()
+returns table (role public.workspace_role, capability text)
+language sql
+immutable
+as $$
+  select r::public.workspace_role, c from (
+    values
+      ('owner','task.create'),      ('owner','task.edit'),      ('owner','task.complete'),
+      ('owner','task.delete'),      ('owner','task.assign_others'),
+      ('owner','comment.create'),   ('owner','comment.moderate'),
+      ('owner','member.manage'),    ('owner','workspace.edit'), ('owner','workspace.delete'),
+
+      ('admin','task.create'),      ('admin','task.edit'),      ('admin','task.complete'),
+      ('admin','task.delete'),      ('admin','task.assign_others'),
+      ('admin','comment.create'),   ('admin','comment.moderate'),
+      ('admin','member.manage'),    ('admin','workspace.edit'),
+
+      ('member','task.create'),     ('member','task.edit'),     ('member','task.complete'),
+      ('member','task.delete'),
+      ('member','comment.create')
+  ) as t(r, c);
+$$;
+
+-- Matrizes que já existem: proprietário e administrador continuam podendo
+-- atribuir a qualquer um, como antes. Membros passam a só atribuir a si.
+insert into public.user_permissions (user_id, role, capability)
+select distinct up.user_id, r.role::public.workspace_role, 'task.assign_others'
+from public.user_permissions up
+cross join (values ('owner'), ('admin')) as r(role)
+on conflict do nothing;
+
+create or replace function public.tasks_guard_assignment()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  eu uuid := auth.uid();
+begin
+  -- Sem sessão (serviços internos) ou escrita interna: nada a checar.
+  if eu is null
+     or coalesce(current_setting('chroma.escrita_interna', true), 'off') = 'on'
+     or new.is_personal then
+    return new;
+  end if;
+
+  if public.has_capability(new.workspace_id, 'task.assign_others') then
+    return new;
+  end if;
+
+  if tg_op = 'INSERT' then
+    if new.assignee_id is null then
+      new.assignee_id := eu;
+    elsif new.assignee_id <> eu then
+      raise exception 'Você só pode criar tarefas para você mesmo.'
+        using errcode = '42501';
+    end if;
+  elsif new.assignee_id is distinct from old.assignee_id
+        and new.assignee_id is distinct from eu then
+    raise exception 'Você não pode passar tarefas para outra pessoa.'
+      using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke execute on function public.tasks_guard_assignment() from anon, authenticated, public;
+
+drop trigger if exists tasks_guard_assignment_trg on public.tasks;
+create trigger tasks_guard_assignment_trg
+  before insert or update of assignee_id on public.tasks
+  for each row execute function public.tasks_guard_assignment();
+
+
+-- >>> incorporado de migrations/0018_co_assignees.sql
+-- =============================================================================
+-- 0018 — Mais de um responsável por tarefa
+-- =============================================================================
+-- `assignee_id` continua sendo o responsável principal (é ele que aparece
+-- primeiro e que as telas antigas já conhecem). `co_assignee_ids` guarda os
+-- demais. Todos eles veem a tarefa em "Minhas tarefas", recebem os lembretes
+-- e podem concluí-la.
+--
+-- É seguro rodar de novo.
+
+alter table public.tasks
+  add column if not exists co_assignee_ids uuid[] not null default '{}';
+
+create index if not exists tasks_co_assignee_ids_idx
+  on public.tasks using gin (co_assignee_ids);
+
+-- A view ganha a coluna no fim (create or replace só permite acrescentar).
+create or replace view public.task_overview
+with (security_invoker = true) as
+select
+  t.id, t.workspace_id, t.parent_task_id, t.title, t.description, t.assignee_id,
+  t.priority, t.due_date, t.is_completed, t.completed_at, t."position",
+  t.created_by, t.created_at, t.updated_at,
+  t.recurrence_type, t.recurrence_interval, t.recurrence_unit,
+  t.recurrence_weekdays, t.recurrence_ends_on, t.due_time,
+  (select count(*) from public.tasks s where s.parent_task_id = t.id)::integer as subtask_count,
+  (select count(*) from public.tasks s where s.parent_task_id = t.id and s.is_completed)::integer as subtask_done_count,
+  (select count(*) from public.comments c where c.task_id = t.id)::integer as comment_count,
+  t.is_personal, t.board_status,
+  t.co_assignee_ids
+from public.tasks t;
+
+-- -----------------------------------------------------------------------------
+-- Normaliza a lista: sem repetidos, sem nulos e sem o responsável principal
+-- -----------------------------------------------------------------------------
+create or replace function public.tasks_normalize_co_assignees()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  new.co_assignee_ids := coalesce((
+    select array_agg(distinct x)
+    from unnest(coalesce(new.co_assignee_ids, '{}')) as x
+    where x is not null and x is distinct from new.assignee_id
+  ), '{}');
+  return new;
+end;
+$$;
+
+drop trigger if exists tasks_normalize_co_assignees_trg on public.tasks;
+-- Nome começa com "tasks_a..." para rodar antes da trava de atribuição
+-- (os gatilhos BEFORE rodam em ordem alfabética).
+drop trigger if exists tasks_a_normalize_co_assignees_trg on public.tasks;
+create trigger tasks_a_normalize_co_assignees_trg
+  before insert or update of assignee_id, co_assignee_ids on public.tasks
+  for each row execute function public.tasks_normalize_co_assignees();
+
+-- -----------------------------------------------------------------------------
+-- Trava de atribuição (0017) estendida aos outros responsáveis
+-- -----------------------------------------------------------------------------
+-- Sem "Atribuir tarefas a outras pessoas", a pessoa só pode incluir ou tirar
+-- a si mesma da lista de responsáveis.
+create or replace function public.tasks_guard_assignment()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  eu uuid := auth.uid();
+  antigos uuid[] := case when tg_op = 'UPDATE' then old.co_assignee_ids else '{}' end;
+begin
+  if eu is null
+     or coalesce(current_setting('chroma.escrita_interna', true), 'off') = 'on'
+     or new.is_personal then
+    return new;
+  end if;
+
+  if public.has_capability(new.workspace_id, 'task.assign_others') then
+    return new;
+  end if;
+
+  if tg_op = 'INSERT' then
+    if new.assignee_id is null then
+      new.assignee_id := eu;
+    elsif new.assignee_id <> eu then
+      raise exception 'Você só pode criar tarefas para você mesmo.'
+        using errcode = '42501';
+    end if;
+  elsif new.assignee_id is distinct from old.assignee_id
+        and new.assignee_id is distinct from eu then
+    raise exception 'Você não pode passar tarefas para outra pessoa.'
+      using errcode = '42501';
+  end if;
+
+  -- Quem entrou ou saiu da lista de outros responsáveis, tirando a si mesmo.
+  if exists (
+    select 1 from unnest(new.co_assignee_ids) x
+    where x <> eu and not (x = any(antigos))
+  ) or exists (
+    select 1 from unnest(antigos) x
+    where x <> eu and not (x = any(new.co_assignee_ids))
+      and x is distinct from new.assignee_id
+  ) then
+    raise exception 'Você só pode incluir ou remover você mesmo como responsável.'
+      using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke execute on function public.tasks_guard_assignment() from anon, authenticated, public;
+
+drop trigger if exists tasks_guard_assignment_trg on public.tasks;
+create trigger tasks_guard_assignment_trg
+  before insert or update of assignee_id, co_assignee_ids on public.tasks
+  for each row execute function public.tasks_guard_assignment();
+
+-- -----------------------------------------------------------------------------
+-- Aviso interno ("Você recebeu uma tarefa") para quem entra na lista
+-- -----------------------------------------------------------------------------
+create or replace function public.notify_task_co_assigned()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  insert into public.notifications
+    (user_id, workspace_id, task_id, actor_id, type, task_title, actor_name)
+  select
+    x, new.workspace_id, new.id, auth.uid(), 'task_assigned',
+    new.title, coalesce(public.display_name(auth.uid()), 'Alguém')
+  from unnest(new.co_assignee_ids) as x
+  where x is distinct from auth.uid()
+    and (tg_op = 'INSERT' or not (x = any(old.co_assignee_ids)))
+    -- a próxima ocorrência de uma tarefa repetida não é "atribuição nova"
+    and coalesce(current_setting('chroma.escrita_interna', true), 'off') <> 'on';
+  return new;
+end;
+$$;
+
+revoke execute on function public.notify_task_co_assigned() from anon, authenticated, public;
+
+drop trigger if exists tasks_notify_co_assigned_trg on public.tasks;
+create trigger tasks_notify_co_assigned_trg
+  after insert or update of co_assignee_ids on public.tasks
+  for each row execute function public.notify_task_co_assigned();
+
+-- -----------------------------------------------------------------------------
+-- A próxima ocorrência de uma tarefa repetida leva os mesmos responsáveis
+-- -----------------------------------------------------------------------------
+create or replace function public.tasks_spawn_next_occurrence()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_base    date;
+  v_proxima date;
+begin
+  if new.recurrence_type = 'none' then
+    return new;
+  end if;
+  if not (new.is_completed and not old.is_completed) then
+    return new;
+  end if;
+
+  v_base := case
+    when new.recurrence_type = 'periodic' then current_date
+    else coalesce(new.due_date, current_date)
+  end;
+
+  v_proxima := public.next_due_date(
+    new.recurrence_type, new.recurrence_interval, new.recurrence_unit,
+    new.recurrence_weekdays, v_base
+  );
+
+  if v_proxima is null then
+    return new;
+  end if;
+
+  perform set_config('chroma.escrita_interna', 'on', true);
+
+  if new.recurrence_ends_on is not null and v_proxima > new.recurrence_ends_on then
+    update public.tasks set recurrence_type = 'none' where id = new.id;
+    perform set_config('chroma.escrita_interna', 'off', true);
+    return new;
+  end if;
+
+  insert into public.tasks (
+    workspace_id, parent_task_id,
+    title, description, assignee_id, co_assignee_ids, priority, due_date, due_time,
+    position, created_by, is_personal,
+    recurrence_type, recurrence_interval, recurrence_unit,
+    recurrence_weekdays, recurrence_ends_on
+  )
+  values (
+    new.workspace_id, new.parent_task_id,
+    new.title, new.description, new.assignee_id, new.co_assignee_ids, new.priority,
+    v_proxima, new.due_time,
+    new.position, new.created_by, new.is_personal,
+    new.recurrence_type, new.recurrence_interval, new.recurrence_unit,
+    new.recurrence_weekdays, new.recurrence_ends_on
+  );
+
+  update public.tasks set recurrence_type = 'none' where id = new.id;
+
+  perform set_config('chroma.escrita_interna', 'off', true);
+  return new;
+end;
+$$;
+
+-- -----------------------------------------------------------------------------
+-- Lembretes (0016) passam a ir para todos os responsáveis
+-- -----------------------------------------------------------------------------
+create or replace function public.claim_push_reminders()
+returns table (user_id uuid, kind text, ref text, title text, body text, url text)
+language plpgsql
+volatile
+security definer
+set search_path = public, pg_temp
+as $$
+#variable_conflict use_column
+declare
+  agora timestamp := (now() at time zone 'America/Sao_Paulo');
+  hoje date := agora::date;
+begin
+  -- O registro só precisa lembrar o suficiente para não repetir aviso.
+  delete from public.notification_log where sent_at < now() - interval '30 days';
+
+  return query
+  with alvo as (
+    -- Um lembrete para cada responsável: o principal (ou quem criou, se não
+    -- houver) e cada um dos outros responsáveis (0018).
+    select t.*, d.destinatario
+    from public.tasks t
+    cross join lateral (
+      select distinct x as destinatario
+      from unnest(array[coalesce(t.assignee_id, t.created_by)] || t.co_assignee_ids) as x
+      where x is not null
+    ) d
+    where not t.is_completed
+      and t.due_date is not null
+      and t.due_date <= hoje + 1
+  ),
+  com_dispositivo as (
+    select distinct s.user_id from public.push_subscriptions s
+  ),
+  candidatos as (
+    -- Vencendo nos próximos 15 minutos
+    select
+      a.destinatario as user_id,
+      'due_soon'::text as kind,
+      a.id::text || ':' || a.due_date::text as ref,
+      'Tarefa vencendo às ' || to_char(a.due_date + a.due_time, 'HH24:MI') as title,
+      a.title as body,
+      case when a.is_personal then '/minhas-tarefas'
+           else '/e/' || a.workspace_id::text || '/tarefas' end as url
+    from alvo a
+    where a.due_time is not null
+      and (a.due_date + a.due_time) > agora
+      and (a.due_date + a.due_time) <= agora + interval '15 minutes'
+
+    union all
+
+    -- Resumo do dia
+    select
+      r.destinatario,
+      'digest',
+      hoje::text,
+      'Suas tarefas de hoje',
+      case
+        when r.hoje_n > 0 and r.atrasadas > 0 then
+          'Você tem ' || r.hoje_n || case when r.hoje_n = 1 then ' tarefa' else ' tarefas' end ||
+          ' para hoje e ' || r.atrasadas || case when r.atrasadas = 1 then ' atrasada.' else ' atrasadas.' end
+        when r.hoje_n > 0 then
+          'Você tem ' || r.hoje_n || case when r.hoje_n = 1 then ' tarefa' else ' tarefas' end || ' para hoje.'
+        else
+          'Você tem ' || r.atrasadas || case when r.atrasadas = 1 then ' tarefa atrasada.' else ' tarefas atrasadas.' end
+      end,
+      '/minhas-tarefas'
+    from (
+      select
+        a.destinatario,
+        count(*) filter (where a.due_date = hoje) as hoje_n,
+        count(*) filter (where a.due_date < hoje) as atrasadas
+      from alvo a
+      group by a.destinatario
+    ) r
+    where agora::time >= time '08:00'
+      and agora::time < time '20:00'
+      and (r.hoje_n > 0 or r.atrasadas > 0)
+  ),
+  filtrados as (
+    select c.*
+    from candidatos c
+    join com_dispositivo d on d.user_id = c.user_id
+    where not public.is_user_blocked_by_access_window(c.user_id)
+  ),
+  marcados as (
+    insert into public.notification_log (user_id, kind, ref)
+    select f.user_id, f.kind, f.ref from filtrados f
+    on conflict do nothing
+    returning notification_log.user_id, notification_log.kind, notification_log.ref
+  )
+  select f.user_id, f.kind, f.ref, f.title, f.body, f.url
+  from filtrados f
+  join marcados m using (user_id, kind, ref);
+end;
+$$;
+
+revoke execute on function public.claim_push_reminders() from anon, authenticated, public;
+grant execute on function public.claim_push_reminders() to service_role;
+
+
+-- >>> incorporado de migrations/0019_company_people.sql
+-- =============================================================================
+-- 0019 — Adicionar direto quem já faz parte da empresa
+-- =============================================================================
+-- Quem já entrou no Chroma Flux por convite em algum espaço de um
+-- proprietário não precisa de outro convite para os demais espaços desse
+-- mesmo proprietário: quem administra o espaço pode adicioná-lo direto.
+--
+-- Esta função lista essas pessoas. Precisa ser SECURITY DEFINER porque um
+-- administrador pode não participar de todos os espaços do proprietário, e a
+-- RLS só mostraria os membros dos espaços em que ele está.
+--
+-- É seguro rodar de novo.
+
+create or replace function public.list_company_people(p_workspace_id uuid)
+returns table (id uuid, full_name text, email text)
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select distinct p.id, p.full_name, p.email
+  from public.workspaces alvo
+  join public.workspaces outros on outros.owner_id = alvo.owner_id
+  join public.workspace_members m on m.workspace_id = outros.id
+  join public.profiles p on p.id = m.user_id
+  where alvo.id = p_workspace_id
+    and public.can_administer(p_workspace_id)
+    and not exists (
+      select 1 from public.workspace_members ja
+      where ja.workspace_id = p_workspace_id and ja.user_id = m.user_id
+    )
+  order by p.full_name;
+$$;
+
+grant execute on function public.list_company_people(uuid) to authenticated;
+revoke execute on function public.list_company_people(uuid) from anon, public;
+
+
 -- =============================================================================
 -- 13. VERIFICAÇÃO
 -- =============================================================================
