@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 
 import { TaskBrowser } from "@/components/workspace/task-browser";
-import { getWorkspaceContext, listMembers, listWorkspaceTasks } from "@/lib/queries";
+import { getMyCapabilities, getWorkspaceContext, listMembers, listWorkspaceTasks } from "@/lib/queries";
 import { EMPTY_FILTERS } from "@/lib/filters";
-import { canWrite } from "@/lib/utils";
+import { taskPermissions } from "@/lib/permissions";
 
 export const metadata: Metadata = { title: "Minhas tarefas" };
 
@@ -13,7 +13,11 @@ export default async function MyTasksPage({
   params: Promise<{ workspaceId: string }>;
 }) {
   const { workspaceId } = await params;
-  const { role, user } = await getWorkspaceContext(workspaceId);
+  const { workspace, role, user } = await getWorkspaceContext(workspaceId);
+
+  // Mesma matriz do proprietário do espaço usada em "Tarefas": as
+  // capacidades não dependem de quem está olhando, só do papel de cada um.
+  const capacidades = await getMyCapabilities(workspace.owner_id, role);
 
   const [tasks, members] = await Promise.all([
     listWorkspaceTasks(workspaceId),
@@ -38,7 +42,7 @@ export default async function MyTasksPage({
       <TaskBrowser
         tasks={mine}
         people={people}
-        canWrite={canWrite(role)}
+        permissoes={taskPermissions(capacidades)}
         currentUserId={user.id}
         workspaceId={workspaceId}
         initialFilters={{ ...EMPTY_FILTERS, status: "open" }}
