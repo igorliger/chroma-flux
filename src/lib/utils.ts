@@ -235,13 +235,33 @@ export function avatarColor(id: string) {
   return palette[hash % palette.length];
 }
 
+/**
+ * Cores disponíveis para os espaços de trabalho, na ordem do seletor (em
+ * volta do círculo cromático, e os neutros no fim). As classes ficam
+ * escritas por extenso de propósito: o Tailwind só gera as classes que
+ * encontra literalmente no código — montá-las com texto variável faria a cor
+ * sumir. O `value` é o que fica salvo no banco; os seis primeiros valores
+ * antigos continuam os mesmos, então espaços existentes não mudam de cor.
+ */
 export const ACCENT_COLORS = [
   { value: "indigo", label: "Índigo", className: "bg-brand-500" },
-  { value: "teal", label: "Turquesa", className: "bg-teal-500" },
-  { value: "amber", label: "Âmbar", className: "bg-amber-500" },
-  { value: "rose", label: "Rosa", className: "bg-rose-500" },
-  { value: "emerald", label: "Esmeralda", className: "bg-emerald-500" },
+  { value: "blue", label: "Azul", className: "bg-blue-500" },
   { value: "sky", label: "Céu", className: "bg-sky-500" },
+  { value: "cyan", label: "Ciano", className: "bg-cyan-500" },
+  { value: "teal", label: "Turquesa", className: "bg-teal-500" },
+  { value: "emerald", label: "Esmeralda", className: "bg-emerald-500" },
+  { value: "green", label: "Verde", className: "bg-green-500" },
+  { value: "lime", label: "Lima", className: "bg-lime-500" },
+  { value: "yellow", label: "Amarelo", className: "bg-yellow-400" },
+  { value: "amber", label: "Âmbar", className: "bg-amber-500" },
+  { value: "orange", label: "Laranja", className: "bg-orange-500" },
+  { value: "red", label: "Vermelho", className: "bg-red-500" },
+  { value: "rose", label: "Rosa", className: "bg-rose-500" },
+  { value: "pink", label: "Pink", className: "bg-pink-500" },
+  { value: "fuchsia", label: "Fúcsia", className: "bg-fuchsia-500" },
+  { value: "purple", label: "Roxo", className: "bg-purple-500" },
+  { value: "violet", label: "Violeta", className: "bg-violet-500" },
+  { value: "slate", label: "Grafite", className: "bg-slate-500" },
 ];
 
 export function accentClass(color: string) {

@@ -145,6 +145,9 @@ function friendlyError(code?: string, message?: string) {
 // ---------------------------------------------------------------------------
 // Criar
 // ---------------------------------------------------------------------------
+/** Valor especial do seletor de responsável: todas as pessoas do espaço. */
+const TODOS = "__todos__";
+
 const createSchema = z.object({
   workspaceId: uuid,
   parentTaskId: optionalUuid,
@@ -170,7 +173,8 @@ export async function createTaskAction(
     parentTaskId: formData.get("parentTaskId") ?? "",
     title: formData.get("title"),
     description: formData.get("description") ?? "",
-    assigneeId: formData.get("assigneeId") ?? "",
+    // "Todos" é resolvido depois de validar o resto (precisa dos membros).
+    assigneeId: formData.get("assigneeId") === TODOS ? "" : (formData.get("assigneeId") ?? ""),
     coAssigneeIds: formData.getAll("coAssigneeIds").map(String).filter(Boolean),
     priority: formData.get("priority") ?? "medium",
     dueDate: formData.get("dueDate") ?? "",
@@ -187,6 +191,21 @@ export async function createTaskAction(
 
   const user = await requireUser();
   const supabase = await createClient();
+
+  // "Todos": todo mundo do espaço que trabalha nas tarefas (visualizador só
+  // lê, então fica de fora). Quem cria fica como responsável principal, se
+  // fizer parte; os demais entram como outros responsáveis.
+  if (formData.get("assigneeId") === TODOS && !parsed.data.isPersonal) {
+    const { data: membros } = await supabase
+      .from("workspace_members")
+      .select("user_id")
+      .eq("workspace_id", parsed.data.workspaceId)
+      .in("role", ["owner", "admin", "member"]);
+    const ids = (membros ?? []).map((m) => m.user_id);
+    const principal = ids.includes(user.id) ? user.id : (ids[0] ?? null);
+    parsed.data.assigneeId = principal;
+    parsed.data.coAssigneeIds = ids.filter((id) => id !== principal).slice(0, 10);
+  }
 
   // O id nasce aqui para as subtarefas, o comentário e os anexos poderem
   // apontar para a tarefa logo em seguida, sem depender de RETURNING.

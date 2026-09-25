@@ -68,6 +68,7 @@ export function NewTaskDialog({
   const [erroArquivo, setErroArquivo] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [responsavel, setResponsavel] = useState<string>(onlyAssigneeId ?? defaultAssigneeId ?? "");
   const inputArquivo = useRef<HTMLInputElement>(null);
 
   function limpar() {
@@ -78,6 +79,7 @@ export function NewTaskDialog({
     setSubtarefas([]);
     setArquivos([]);
     setErroArquivo(null);
+    setResponsavel(onlyAssigneeId ?? defaultAssigneeId ?? "");
   }
 
   function fechar() {
@@ -163,9 +165,14 @@ export function NewTaskDialog({
               name="assigneeId"
               // Em "Minhas tarefas" o responsável já vem preenchido: criar
               // uma tarefa ali e ela não aparecer na lista seria confuso.
-              defaultValue={onlyAssigneeId ?? defaultAssigneeId ?? ""}
+              value={responsavel}
+              onChange={(e) => setResponsavel(e.target.value)}
             >
               {!onlyAssigneeId && <option value="">Ninguém</option>}
+              {/* Todo mundo do espaço (menos visualizadores) — ver createTaskAction. */}
+              {!onlyAssigneeId && !isPersonal && people.length > 1 && (
+                <option value="__todos__">Todos</option>
+              )}
               {people
                 .filter((person) => !onlyAssigneeId || person.id === onlyAssigneeId)
                 .map((person) => (
@@ -176,7 +183,7 @@ export function NewTaskDialog({
             </Select>
           </Field>
 
-          {!isPersonal && !onlyAssigneeId && people.length > 1 && (
+          {!isPersonal && !onlyAssigneeId && people.length > 1 && responsavel !== "__todos__" && (
             <Field label="Mais um responsável" htmlFor="task-co-assignee" hint="Opcional.">
               <Select id="task-co-assignee" name="coAssigneeIds" defaultValue="">
                 <option value="">Ninguém</option>
