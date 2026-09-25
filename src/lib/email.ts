@@ -18,14 +18,12 @@ function getResendClient(): Resend | null {
 }
 
 /**
- * Remetente do e-mail. Sem `RESEND_FROM_EMAIL` configurada, usa o domínio de
- * testes do Resend (`onboarding@resend.dev`) — funciona para enviar, mas só
- * chega à caixa de quem cadastrou a conta Resend. Para enviar a qualquer
- * pessoa, é preciso verificar um domínio próprio no painel do Resend e
- * configurar `RESEND_FROM_EMAIL` com um endereço desse domínio.
+ * Remetente do e-mail. Por padrão usa o domínio próprio `chromaflux.com.br`,
+ * já verificado no Resend — assim o convite chega a qualquer pessoa.
+ * `RESEND_FROM_EMAIL` só é necessária para trocar esse endereço.
  */
 function getFromAddress(): string {
-  return process.env.RESEND_FROM_EMAIL || "Chroma Flux <onboarding@resend.dev>";
+  return process.env.RESEND_FROM_EMAIL || "Chroma Flux <convites@chromaflux.com.br>";
 }
 
 export type SendInviteEmailResult = { sent: boolean; error?: string };
