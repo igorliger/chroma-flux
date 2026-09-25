@@ -1,0 +1,238 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Identidade visual do Chroma Flux.
+
+   TEMA CLARO E ESCURO
+   -------------------
+   As cores não ficam escritas direto no `@theme`: ele aponta para variáveis
+   que trocam de valor conforme o tema. Assim `text-ink-800` e `bg-surface`
+   continuam significando "texto principal" e "superfície de cartão" nos dois
+   temas, e nenhuma tela precisa de variantes `dark:` espalhadas.
+
+   A escala `ink` inverte no escuro: `ink-50` deixa de ser quase branco e passa
+   a ser quase preto, `ink-900` faz o caminho oposto. Como o app sempre usou a
+   escala no sentido "claro → escuro", a inversão acerta tudo de uma vez.
+
+   `sidebar` tem token próprio porque a barra lateral não acompanha a escala
+   `ink`: ela é um painel com contraste próprio, mais escuro que o conteúdo no
+   tema escuro e mais acinzentado que ele no claro.
+
+   Os estados da barra (`hover`, `active`, `line`) também são tokens, e não
+   `white/10` fixo como já foram: sobreposição de branco só clareia sobre fundo
+   escuro — no tema claro ela some. Aqui o que troca é a cor da sobreposição,
+   branca no escuro e preta no claro, o que mantém a barra legível nos dois.
+   --------------------------------------------------------------------------- */
+
+:root {
+  --ink-50: oklch(0.98 0.003 285);
+  --ink-100: oklch(0.96 0.004 285);
+  --ink-200: oklch(0.92 0.006 285);
+  --ink-300: oklch(0.86 0.008 285);
+  --ink-400: oklch(0.68 0.012 285);
+  --ink-500: oklch(0.55 0.014 285);
+  --ink-600: oklch(0.45 0.016 285);
+  --ink-700: oklch(0.36 0.016 285);
+  --ink-800: oklch(0.27 0.014 285);
+  --ink-900: oklch(0.19 0.012 285);
+
+  --brand-50: oklch(0.97 0.014 285);
+  --brand-100: oklch(0.94 0.03 285);
+  --brand-200: oklch(0.89 0.055 285);
+  --brand-300: oklch(0.81 0.09 285);
+  --brand-400: oklch(0.71 0.14 285);
+  --brand-500: oklch(0.62 0.18 285);
+  --brand-600: oklch(0.54 0.2 285);
+  --brand-700: oklch(0.46 0.18 285);
+  --brand-800: oklch(0.39 0.15 285);
+  --brand-900: oklch(0.33 0.12 285);
+
+  /* Superfície de cartão, painel e campo. */
+  --surface: oklch(1 0 0);
+  --surface-raised: oklch(1 0 0);
+
+  /* Um degrau abaixo do fundo da página (`ink-50`), para a barra se distinguir
+     dele sem precisar de borda, e dos cartões, que são brancos. */
+  --sidebar: oklch(0.955 0.005 285);
+  --sidebar-fg: oklch(0.27 0.014 285);
+  --sidebar-muted: oklch(0.45 0.016 285);
+  --sidebar-hover: rgb(0 0 0 / 0.05);
+  --sidebar-active: rgb(0 0 0 / 0.09);
+  --sidebar-line: rgb(0 0 0 / 0.08);
+
+  /* Selos de estado — prioridade, prazo, atraso.
+     Precisam de token próprio: as paletas prontas do Tailwind não invertem, e
+     um `bg-rose-50` continuaria quase branco no tema escuro, virando um borrão
+     luminoso ao lado dos selos que escurecem corretamente. */
+  --danger-bg: oklch(0.95 0.03 15);
+  --danger-fg: oklch(0.52 0.2 17);
+  --warn-bg: oklch(0.96 0.04 80);
+  --warn-fg: oklch(0.52 0.13 65);
+  --info-bg: oklch(0.96 0.03 240);
+  --info-fg: oklch(0.52 0.15 245);
+  --ok-bg: oklch(0.95 0.04 155);
+  --ok-fg: oklch(0.48 0.13 155);
+}
+
+:root[data-theme="dark"] {
+  /* A escala inverte: 50 vira o fundo mais escuro, 900 o texto mais claro. */
+  --ink-50: oklch(0.17 0.01 285);
+  --ink-100: oklch(0.21 0.011 285);
+  --ink-200: oklch(0.27 0.012 285);
+  --ink-300: oklch(0.34 0.013 285);
+  --ink-400: oklch(0.5 0.014 285);
+  --ink-500: oklch(0.63 0.014 285);
+  --ink-600: oklch(0.73 0.012 285);
+  --ink-700: oklch(0.83 0.01 285);
+  --ink-800: oklch(0.91 0.007 285);
+  --ink-900: oklch(0.97 0.004 285);
+
+  /* O roxo precisa clarear no escuro: o tom claro some contra fundo escuro. */
+  --brand-50: oklch(0.26 0.05 285);
+  --brand-100: oklch(0.31 0.07 285);
+  --brand-200: oklch(0.37 0.1 285);
+  --brand-300: oklch(0.46 0.14 285);
+  --brand-400: oklch(0.58 0.17 285);
+  --brand-500: oklch(0.68 0.18 285);
+  --brand-600: oklch(0.62 0.19 285);
+  --brand-700: oklch(0.74 0.15 285);
+  --brand-800: oklch(0.82 0.11 285);
+  --brand-900: oklch(0.89 0.07 285);
+
+  --surface: oklch(0.22 0.011 285);
+  --surface-raised: oklch(0.25 0.012 285);
+
+  --sidebar: oklch(0.14 0.01 285);
+  --sidebar-fg: oklch(0.95 0.004 285);
+  --sidebar-muted: oklch(0.6 0.012 285);
+  --sidebar-hover: rgb(255 255 255 / 0.1);
+  --sidebar-active: rgb(255 255 255 / 0.15);
+  --sidebar-line: rgb(255 255 255 / 0.1);
+
+  /* Fundo escuro e saturado, texto claro: o mesmo significado, invertido. */
+  --danger-bg: oklch(0.29 0.09 15);
+  --danger-fg: oklch(0.8 0.14 17);
+  --warn-bg: oklch(0.3 0.07 75);
+  --warn-fg: oklch(0.83 0.13 80);
+  --info-bg: oklch(0.29 0.08 245);
+  --info-fg: oklch(0.8 0.12 240);
+  --ok-bg: oklch(0.28 0.07 155);
+  --ok-fg: oklch(0.79 0.13 155);
+}
+
+@theme {
+  --color-ink-50: var(--ink-50);
+  --color-ink-100: var(--ink-100);
+  --color-ink-200: var(--ink-200);
+  --color-ink-300: var(--ink-300);
+  --color-ink-400: var(--ink-400);
+  --color-ink-500: var(--ink-500);
+  --color-ink-600: var(--ink-600);
+  --color-ink-700: var(--ink-700);
+  --color-ink-800: var(--ink-800);
+  --color-ink-900: var(--ink-900);
+
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-fg: var(--danger-fg);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-fg: var(--warn-fg);
+  --color-info-bg: var(--info-bg);
+  --color-info-fg: var(--info-fg);
+  --color-ok-bg: var(--ok-bg);
+  --color-ok-fg: var(--ok-fg);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-fg: var(--sidebar-fg);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-line: var(--sidebar-line);
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  --radius-card: 0.875rem;
+}
+
+/* Cores de acento de projetos e espaços — iguais nos dois temas. */
+:root {
+  --accent-indigo: oklch(0.62 0.18 285);
+  --accent-teal: oklch(0.68 0.13 190);
+  --accent-amber: oklch(0.76 0.15 75);
+  --accent-rose: oklch(0.66 0.18 15);
+  --accent-emerald: oklch(0.68 0.15 155);
+  --accent-sky: oklch(0.7 0.14 235);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--ink-50);
+  color: var(--ink-800);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* A troca de tema anima, mas só nas cores — animar tudo deixaria a interface
+   borrachuda a cada navegação. */
+:root[data-theme-ready] body,
+:root[data-theme-ready] body * {
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+/* Campos nativos (data, hora) precisam saber o tema para desenhar os próprios
+   ícones e calendários com o contraste certo. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+.scrollbar-slim::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scrollbar-slim::-webkit-scrollbar-thumb {
+  background-color: var(--ink-300);
+  border-radius: 9999px;
+}
+.scrollbar-slim::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+body.dragging {
+  user-select: none;
+  cursor: grabbing;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

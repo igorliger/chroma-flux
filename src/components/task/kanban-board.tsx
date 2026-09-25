@@ -1,0 +1,266 @@
+"use client";
+
+import { useOptimistic, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, ListTree, MessageSquare, Repeat } from "lucide-react";
+
+import { TaskPanel } from "@/components/task/task-panel";
+import { EmptyState } from "@/components/ui";
+import { patchTaskAction } from "@/app/actions/tasks";
+import { recurrenceFromTask, shortRecurrenceLabel } from "@/lib/recurrence";
+import { useNow } from "@/lib/use-now";
+import { cn, dueDateMeta, positionBetween, priorityMeta } from "@/lib/utils";
+import type { TaskPermissions } from "@/lib/permissions";
+import type {
+  CustomFieldDefinition,
+  PersonRef,
+  TaskBoardStatus,
+  TaskOverview,
+} from "@/lib/database.types";
+import type { TaskDependencyInfo } from "@/lib/queries";
+
+const COLUNAS: { value: TaskBoardStatus; label: string }[] = [
+  { value: "todo", label: "A fazer" },
+  { value: "doing", label: "Fazendo" },
+  { value: "done", label: "Feito" },
+];
+
+/**
+ * Quadro Kanban de colunas fixas — ver a decisão no plano: nada de seções
+ * configuráveis (o projeto já teve isso e removeu por complexidade). Arrastar
+ * usa a API nativa do navegador, sem biblioteca.
+ */
+export function KanbanBoard({
+  tasks,
+  people,
+  permissoes,
+  currentUserId,
+  workspaceId,
+  customFields,
+  dependenciesByTask,
+  customFieldValuesByTask,
+}: {
+  tasks: TaskOverview[];
+  people: PersonRef[];
+  permissoes: TaskPermissions;
+  currentUserId: string;
+  workspaceId: string;
+  customFields: CustomFieldDefinition[];
+  dependenciesByTask: Map<string, TaskDependencyInfo>;
+  customFieldValuesByTask: Map<string, Map<string, string>>;
+}) {
+  const router = useRouter();
+  const now = useNow();
+  const [, startTransition] = useTransition();
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const [optimisticTasks, applyOptimistic] = useOptimistic(
+    tasks,
+    (
+      current: TaskOverview[],
+      change: { id: string; board_status: TaskBoardStatus; position: number },
+    ) =>
+      current.map((t) =>
+        t.id === change.id
+          ? {
+              ...t,
+              board_status: change.board_status,
+              position: change.position,
+              is_completed: change.board_status === "done",
+            }
+          : t,
+      ),
+  );
+
+  const peopleById = new Map(people.map((p) => [p.id, p]));
+  const openTask = optimisticTasks.find((t) => t.id === openTaskId) ?? null;
+
+  async function moverPara(
+    taskId: string,
+    novoStatus: TaskBoardStatus,
+    antes?: number,
+    depois?: number,
+  ) {
+    const novaPosicao = positionBetween(antes, depois);
+
+    startTransition(async () => {
+      applyOptimistic({ id: taskId, board_status: novoStatus, position: novaPosicao });
+      const result = await patchTaskAction(taskId, workspaceId, {
+        board_status: novoStatus,
+        position: novaPosicao,
+      });
+      if (result.error) {
+        setError(result.error);
+        router.refresh();
+      } else {
+        setError(null);
+        router.refresh();
+      }
+    });
+  }
+
+  function onDragStart(event: React.DragEvent, taskId: string) {
+    event.dataTransfer.setData("text/plain", taskId);
+    document.body.classList.add("dragging");
+  }
+
+  function onDragEnd() {
+    document.body.classList.remove("dragging");
+  }
+
+  return (
+    <div className="space-y-3">
+      {error && (
+        <p role="alert" className="rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger-fg">
+          {error}
+        </p>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {COLUNAS.map((coluna) => {
+          const doColuna = optimisticTasks
+            .filter((t) => t.board_status === coluna.value)
+            .sort((a, b) => a.position - b.position);
+
+          return (
+            <div
+              key={coluna.value}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const taskId = e.dataTransfer.getData("text/plain");
+                if (!taskId) return;
+                const ultima = doColuna[doColuna.length - 1];
+                void moverPara(taskId, coluna.value, ultima?.position, undefined);
+              }}
+              className="flex min-h-40 flex-col rounded-[--radius-card] border border-ink-200 bg-ink-50/50 p-2"
+            >
+              <div className="mb-2 flex items-center justify-between px-1">
+                <h3 className="text-sm font-semibold text-ink-700">{coluna.label}</h3>
+                <span className="text-xs text-ink-400">{doColuna.length}</span>
+              </div>
+
+              <div className="flex-1 space-y-2 overflow-y-auto scrollbar-slim">
+                {doColuna.length === 0 && (
+                  <p className="px-2 py-6 text-center text-xs text-ink-400">
+                    Arraste tarefas para aqui
+                  </p>
+                )}
+
+                {doColuna.map((task, index) => {
+                  const assignee = task.assignee_id ? peopleById.get(task.assignee_id) : null;
+                  const priority = priorityMeta(task.priority);
+                  const due = dueDateMeta(task.due_date, task.is_completed, task.due_time, now);
+                  const anterior = doColuna[index - 1];
+
+                  return (
+                    <div
+                      key={task.id}
+                      draggable={permissoes.edit}
+                      onDragStart={(e) => onDragStart(e, task.id)}
+                      onDragEnd={onDragEnd}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const taskId = e.dataTransfer.getData("text/plain");
+                        if (!taskId || taskId === task.id) return;
+                        void moverPara(taskId, coluna.value, anterior?.position, task.position);
+                      }}
+                      onClick={() => setOpenTaskId(task.id)}
+                      className={cn(
+                        "cursor-pointer rounded-lg border border-ink-200 bg-surface p-2.5 shadow-sm transition-colors hover:border-brand-300",
+                        permissoes.edit && "cursor-grab active:cursor-grabbing",
+                      )}
+                    >
+                      <p
+                        className={cn(
+                          "text-sm font-medium text-ink-800",
+                          task.is_completed && "text-ink-400 line-through",
+                        )}
+                      >
+                        {task.title}
+                      </p>
+
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink-500">
+                        {due?.overdue && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-danger-bg px-1.5 py-0.5 font-semibold text-danger-fg">
+                            <AlertTriangle className="size-3" aria-hidden />
+                            Atrasado
+                          </span>
+                        )}
+                        {shortRecurrenceLabel(recurrenceFromTask(task)) && (
+                          <span className="inline-flex items-center gap-1 font-medium text-brand-600">
+                            <Repeat className="size-3" aria-hidden />
+                          </span>
+                        )}
+                        {task.subtask_count > 0 && (
+                          <span className="inline-flex items-center gap-1">
+                            <ListTree className="size-3" aria-hidden />
+                            {task.subtask_done_count}/{task.subtask_count}
+                          </span>
+                        )}
+                        {task.comment_count > 0 && (
+                          <span className="inline-flex items-center gap-1">
+                            <MessageSquare className="size-3" aria-hidden />
+                            {task.comment_count}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mt-2 flex items-center justify-between">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                            priority.chip,
+                          )}
+                        >
+                          <span className={cn("size-1.5 rounded-full", priority.dot)} aria-hidden />
+                        </span>
+                        {assignee && (
+                          <span
+                            title={assignee.full_name}
+                            className="inline-flex size-5 items-center justify-center rounded-full bg-ink-200 text-[9px] font-semibold text-ink-700"
+                          >
+                            {(assignee.full_name || assignee.email).slice(0, 1).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {optimisticTasks.length === 0 && (
+        <EmptyState
+          title="Nenhuma tarefa por aqui"
+          description="Crie tarefas em “Tarefas” para vê-las no quadro."
+        />
+      )}
+
+      {openTask && (
+        <TaskPanel
+          task={openTask}
+          workspaceId={workspaceId}
+          people={people}
+          permissoes={permissoes}
+          currentUserId={currentUserId}
+          allTasks={optimisticTasks}
+          customFields={customFields}
+          customFieldValues={customFieldValuesByTask.get(openTask.id)}
+          dependencies={dependenciesByTask.get(openTask.id)}
+          onClose={() => setOpenTaskId(null)}
+          onChanged={() => router.refresh()}
+        />
+      )}
+    </div>
+  );
+}
