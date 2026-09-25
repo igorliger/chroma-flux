@@ -77,6 +77,7 @@ export function NewTaskDialog({
     return id ? [id] : [];
   };
   const [responsaveis, setResponsaveis] = useState<string[]>(responsaveisIniciais);
+  const [todos, setTodos] = useState(false);
   const inputArquivo = useRef<HTMLInputElement>(null);
 
   function limpar() {
@@ -88,6 +89,7 @@ export function NewTaskDialog({
     setArquivos([]);
     setErroArquivo(null);
     setResponsaveis(responsaveisIniciais());
+    setTodos(false);
   }
 
   function fechar() {
@@ -170,6 +172,7 @@ export function NewTaskDialog({
           <Field label="Responsáveis" hint="Marque uma ou mais pessoas — ou Todos.">
             {/* O primeiro marcado é o principal; os demais, outros responsáveis. */}
             <input type="hidden" name="assigneeId" value={responsaveis[0] ?? ""} />
+            <input type="hidden" name="assignedToAll" value={todos ? "true" : "false"} />
             {responsaveis.slice(1).map((id) => (
               <input key={id} type="hidden" name="coAssigneeIds" value={id} />
             ))}
@@ -177,7 +180,11 @@ export function NewTaskDialog({
               <AssigneePicker
                 people={people}
                 selecionados={responsaveis}
-                onChange={setResponsaveis}
+                todos={todos}
+                onChange={(ids, marcarTodos) => {
+                  setResponsaveis(ids);
+                  setTodos(marcarTodos);
+                }}
                 currentUserId={currentUserId}
                 podeOutros={!onlyAssigneeId}
               />

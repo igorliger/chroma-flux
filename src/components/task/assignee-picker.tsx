@@ -19,33 +19,46 @@ export function AssigneePicker({
   people,
   selecionados,
   onChange,
+  todos = false,
   currentUserId,
   podeOutros,
   disabled = false,
 }: {
   people: PersonRef[];
   selecionados: string[];
-  onChange: (ids: string[]) => void;
+  /** Recebe os responsáveis e se a tarefa ficou marcada como "Todos". */
+  onChange: (ids: string[], todos: boolean) => void;
+  /**
+   * Tarefa marcada como "Todos" (assigned_to_all): quem entrar no espaço
+   * depois vira responsável sozinho — ver migração 0027.
+   */
+  todos?: boolean;
   currentUserId: string;
   podeOutros: boolean;
   disabled?: boolean;
 }) {
-  const todosMarcados = people.length > 0 && people.every((p) => selecionados.includes(p.id));
+  const todosMarcados =
+    todos || (people.length > 0 && people.every((p) => selecionados.includes(p.id)));
   const algunsMarcados = !todosMarcados && selecionados.length > 0;
 
   function alternar(id: string) {
-    onChange(
-      selecionados.includes(id) ? selecionados.filter((x) => x !== id) : [...selecionados, id],
-    );
+    const novos = selecionados.includes(id)
+      ? selecionados.filter((x) => x !== id)
+      : [...selecionados, id];
+    // Tirar alguém desfaz o "Todos"; marcar a última pessoa que faltava, faz.
+    onChange(novos, people.length > 1 && people.every((p) => novos.includes(p.id)));
   }
 
   function alternarTodos() {
     if (todosMarcados) {
-      onChange([]);
+      onChange([], false);
       return;
     }
     // Mantém a ordem de quem já estava marcado (o principal continua o mesmo).
-    onChange([...selecionados, ...people.map((p) => p.id).filter((id) => !selecionados.includes(id))]);
+    onChange(
+      [...selecionados, ...people.map((p) => p.id).filter((id) => !selecionados.includes(id))],
+      true,
+    );
   }
 
   return (

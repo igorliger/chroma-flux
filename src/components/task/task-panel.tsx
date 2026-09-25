@@ -153,11 +153,22 @@ export function TaskPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task.id, chaveResponsaveis]);
 
-  async function salvarResponsaveis(ids: string[]) {
-    const anteriores = responsaveis;
+  const [todos, setTodos] = useState(task.assigned_to_all);
+  useEffect(() => setTodos(task.assigned_to_all), [task.id, task.assigned_to_all]);
+
+  async function salvarResponsaveis(ids: string[], marcarTodos: boolean) {
+    const anteriores = { ids: responsaveis, todos };
     setResponsaveis(ids);
-    const ok = await patch({ assignee_id: ids[0] ?? null, co_assignee_ids: ids.slice(1) });
-    if (!ok) setResponsaveis(anteriores);
+    setTodos(marcarTodos);
+    const ok = await patch({
+      assignee_id: ids[0] ?? null,
+      co_assignee_ids: ids.slice(1),
+      assigned_to_all: marcarTodos,
+    });
+    if (!ok) {
+      setResponsaveis(anteriores.ids);
+      setTodos(anteriores.todos);
+    }
   }
 
   useEffect(() => {
@@ -424,6 +435,7 @@ export function TaskPanel({
                   <AssigneePicker
                     people={people}
                     selecionados={responsaveis}
+                    todos={todos}
                     onChange={salvarResponsaveis}
                     currentUserId={currentUserId}
                     podeOutros={permissoes.assignOthers}

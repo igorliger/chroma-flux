@@ -152,7 +152,7 @@ const createSchema = z.object({
   title: z.string().trim().min(1, "A tarefa precisa de um título.").max(300, "Título muito longo."),
   description: z.string().trim().max(10000, "Descrição muito longa.").default(""),
   assigneeId: optionalUuid,
-  coAssigneeIds: z.array(z.string().uuid()).max(10, "No máximo 10 responsáveis.").default([]),
+  coAssigneeIds: z.array(z.string().uuid()).max(50, "No máximo 50 responsáveis.").default([]),
   priority: priority.default("medium"),
   dueDate: dueDate.default(null),
   dueTime: dueTime.default(null),
@@ -205,6 +205,7 @@ export async function createTaskAction(
     assignee_id: parsed.data.isPersonal ? user.id : parsed.data.assigneeId,
     // Particular é só de quem criou: não há outros responsáveis.
     co_assignee_ids: parsed.data.isPersonal ? [] : parsed.data.coAssigneeIds,
+    assigned_to_all: !parsed.data.isPersonal && formData.get("assignedToAll") === "true",
     priority: parsed.data.priority,
     due_date: parsed.data.dueDate,
     // Hora sem data é recusada pelo banco; a interface já evita, isto é a rede.
@@ -324,7 +325,8 @@ const patchSchema = z.object({
   title: z.string().trim().min(1).max(300).optional(),
   description: z.string().trim().max(10000).optional(),
   assignee_id: z.string().uuid().nullable().optional(),
-  co_assignee_ids: z.array(z.string().uuid()).max(10).optional(),
+  co_assignee_ids: z.array(z.string().uuid()).max(50).optional(),
+  assigned_to_all: z.boolean().optional(),
   priority: priority.optional(),
   due_date: z
     .string()
@@ -438,6 +440,7 @@ export async function patchTaskAction(
   if (parsed.data.description !== undefined) fields.description = parsed.data.description;
   if (parsed.data.assignee_id !== undefined) fields.assignee_id = parsed.data.assignee_id;
   if (parsed.data.co_assignee_ids !== undefined) fields.co_assignee_ids = parsed.data.co_assignee_ids;
+  if (parsed.data.assigned_to_all !== undefined) fields.assigned_to_all = parsed.data.assigned_to_all;
   if (parsed.data.priority !== undefined) fields.priority = parsed.data.priority;
   if (parsed.data.due_date !== undefined) fields.due_date = parsed.data.due_date;
   if (parsed.data.position !== undefined) fields.position = parsed.data.position;
