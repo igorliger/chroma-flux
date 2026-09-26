@@ -1085,3 +1085,24 @@ export async function getOwnerDashboard(): Promise<OwnerDashboardData> {
     ),
   };
 }
+
+export type Holiday = {
+  id: string;
+  date: string;
+  name: string;
+  scope: "nacional" | "estadual" | "municipal" | "empresa";
+};
+
+/** Feriados de quem está logado (como proprietário), do ano passado em diante. */
+export async function listMyHolidays(): Promise<Holiday[]> {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const desde = `${new Date().getFullYear() - 1}-01-01`;
+  const { data } = await supabase
+    .from("holidays")
+    .select("id, date, name, scope")
+    .eq("owner_id", user.id)
+    .gte("date", desde)
+    .order("date");
+  return (data ?? []) as Holiday[];
+}

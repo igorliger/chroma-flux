@@ -8,6 +8,7 @@ import {
   getMyPermissionMatrix,
   getMyProfile,
   getTeamOverview,
+  listMyHolidays,
   listMyAccessGroups,
   listMyTeamMembers,
   listWorkspaces,
@@ -18,6 +19,7 @@ import { ROLES, canAdminister } from "@/lib/utils";
 import { NotificationSettings } from "@/components/notifications/notification-settings";
 
 import { AccessGroupsPanel } from "./access-groups-panel";
+import { HolidaysPanel } from "./holidays-panel";
 import { TeamInviteForm } from "./team-invite-form";
 import { TeamPanel } from "./team-panel";
 import { PermissionsMatrix } from "./permissions-matrix";
@@ -57,7 +59,7 @@ export default async function ConfiguracoesPage() {
   const mandaEmAlgumEspaco = workspaces.some((w) => canAdminister(w.role));
 
   // Convites e equipe: só do proprietário (vazio para os demais).
-  const equipe = await getTeamOverview();
+  const [equipe, feriados] = await Promise.all([getTeamOverview(), listMyHolidays()]);
 
   // Só o booleano sai do servidor — nunca o valor da chave.
   const emailConfigurado = Boolean(process.env.RESEND_API_KEY?.trim());
@@ -185,6 +187,19 @@ export default async function ConfiguracoesPage() {
                 totalEspacos={meusEspacos.length}
               />
             </Card>
+
+            {equipe.workspaces.length > 0 && (
+              <Card className="mt-6">
+                <h2 className="font-semibold text-ink-900">Feriados</h2>
+                <p className="mb-4 mt-1 text-sm text-ink-500">
+                  Valem para todos os seus espaços. Tarefa com prazo num feriado vai para o
+                  próximo dia útil (segunda a sexta) — inclusive as repetidas — e no feriado
+                  não sai o resumo diário. Pontos facultativos (como Carnaval) não entram
+                  sozinhos: cadastre-os aqui se a empresa não trabalhar.
+                </p>
+                <HolidaysPanel feriados={feriados} />
+              </Card>
+            )}
 
             <Card className="mt-6">
               <h2 className="font-semibold text-ink-900">Grupos de acesso</h2>

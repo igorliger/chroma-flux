@@ -415,6 +415,24 @@ export type Database = {
         };
         Relationships: [];
       };
+      holidays: {
+        Row: {
+          id: string;
+          owner_id: string;
+          date: string;
+          name: string;
+          scope: "nacional" | "estadual" | "municipal" | "empresa";
+          created_at: string;
+        };
+        Insert: {
+          owner_id: string;
+          date: string;
+          name: string;
+          scope?: "nacional" | "estadual" | "municipal" | "empresa";
+        };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
       push_subscriptions: {
         Row: {
           id: string;
