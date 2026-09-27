@@ -16,6 +16,7 @@ import type {
   CustomFieldValue,
   Invitation,
   MemberWithProfile,
+  PersonalTaskOverview,
   PersonRef,
   Profile,
   TaskDependency,
@@ -805,6 +806,26 @@ export async function listPersonalBoards(userId: string): Promise<PersonalBoard[
   }
 
   return quadros;
+}
+
+/**
+ * Lembretes pessoais — não pertencem a nenhum espaço de trabalho, só a quem
+ * os criou (migração 0029). Só o nível de topo entra aqui; as subtarefas são
+ * carregadas sob demanda pelo próprio painel, como as das tarefas de espaço.
+ */
+export async function listPersonalReminders(userId: string): Promise<PersonalTaskOverview[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("personal_task_overview")
+    .select("*")
+    .eq("owner_id", userId)
+    .is("parent_task_id", null)
+    .order("due_date", { ascending: true, nullsFirst: false })
+    .limit(1000);
+
+  if (error) throw error;
+  return (data ?? []) as PersonalTaskOverview[];
 }
 
 // Detalhes de uma tarefa (subtarefas e comentários) são carregados pelo próprio

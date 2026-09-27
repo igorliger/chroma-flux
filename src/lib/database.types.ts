@@ -84,6 +84,35 @@ export type TaskRow = {
   board_status: TaskBoardStatus;
 };
 
+/**
+ * Lembrete pessoal (migração 0029): mesma cara de uma tarefa — prioridade,
+ * prazo com hora, repetição, subtarefas — mas sem espaço de trabalho,
+ * comentários, anexos, campos personalizados ou dependências. `owner_id` é a
+ * única pessoa que enxerga a linha (RLS por dono, sem matriz de papéis).
+ */
+export type PersonalTaskRow = {
+  id: string;
+  owner_id: string;
+  parent_task_id: string | null;
+  title: string;
+  description: string;
+  priority: TaskPriority;
+  due_date: string | null;
+  /** Hora de parede, "HH:MM:SS". Opcional e sempre acompanhada de `due_date`. */
+  due_time: string | null;
+  is_completed: boolean;
+  completed_at: string | null;
+  position: number;
+  recurrence_type: RecurrenceType;
+  recurrence_interval: number;
+  recurrence_unit: RecurrenceUnit;
+  /** 0 = domingo … 6 = sábado. */
+  recurrence_weekdays: number[];
+  recurrence_ends_on: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -491,6 +520,41 @@ export type Database = {
         Update: Record<string, never>;
         Relationships: [];
       };
+      personal_tasks: {
+        Row: PersonalTaskRow;
+        Insert: {
+          id?: string;
+          owner_id: string;
+          parent_task_id?: string | null;
+          title: string;
+          description?: string;
+          priority?: TaskPriority;
+          due_date?: string | null;
+          due_time?: string | null;
+          is_completed?: boolean;
+          position?: number;
+          recurrence_type?: RecurrenceType;
+          recurrence_interval?: number;
+          recurrence_unit?: RecurrenceUnit;
+          recurrence_weekdays?: number[];
+          recurrence_ends_on?: string | null;
+        };
+        Update: {
+          title?: string;
+          description?: string;
+          priority?: TaskPriority;
+          due_date?: string | null;
+          due_time?: string | null;
+          is_completed?: boolean;
+          position?: number;
+          recurrence_type?: RecurrenceType;
+          recurrence_interval?: number;
+          recurrence_unit?: RecurrenceUnit;
+          recurrence_weekdays?: number[];
+          recurrence_ends_on?: string | null;
+        };
+        Relationships: [];
+      };
       workspace_invitations: {
         Row: {
           id: string;
@@ -525,6 +589,14 @@ export type Database = {
           comment_count: number;
           /** Responsáveis que já concluíram a sua parte (0025). */
           completed_by_ids: string[];
+        };
+        Relationships: [];
+      };
+      /** `personal_tasks` acrescida dos contadores de subtarefas. */
+      personal_task_overview: {
+        Row: PersonalTaskRow & {
+          subtask_count: number;
+          subtask_done_count: number;
         };
         Relationships: [];
       };
@@ -620,6 +692,13 @@ export type TaskUpdate = Tables["tasks"]["Update"];
 
 /** Linha da view `task_overview`: tarefa + contadores. */
 export type TaskOverview = Database["public"]["Views"]["task_overview"]["Row"];
+
+export type PersonalTask = Tables["personal_tasks"]["Row"];
+/** Campos aceitos num UPDATE de lembrete pessoal. */
+export type PersonalTaskUpdate = Tables["personal_tasks"]["Update"];
+/** Linha da view `personal_task_overview`: lembrete + contadores. */
+export type PersonalTaskOverview =
+  Database["public"]["Views"]["personal_task_overview"]["Row"];
 
 /** Subconjunto do perfil exibido em avatares e seletores de responsável. */
 export type PersonRef = Pick<Profile, "id" | "full_name" | "email" | "avatar_url">;
