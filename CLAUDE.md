@@ -11,8 +11,11 @@ você mesmo tudo o que puder.
 
 - Next.js 15.5 (App Router, Server Actions), React 19, TypeScript, Tailwind v4.
 - Supabase: Auth + Postgres com RLS + Storage (bucket privado `anexos`) +
-  Edge Functions + pg_cron + pg_net + Vault. Projeto `zdkgujlkdtxiabxntuce`
-  (nuvem, ca-central-1) — ver "Supabase" abaixo.
+  Edge Functions + pg_cron + pg_net + Vault. Auto-hospedado (Docker) nesta
+  própria VPS desde 26/09/2026, em `https://api.chromaflux.com.br` — ver
+  "Supabase" abaixo. Projeto antigo na nuvem `zdkgujlkdtxiabxntuce`
+  (ca-central-1) mantido **ativo** (não pausar/excluir) como plano de volta
+  até 10/10/2026.
 - E-mail: Resend, domínio `chromaflux.com.br`, remetente
   `Chroma Flux <convites@chromaflux.com.br>`.
 - Push: Web Push (VAPID) via Edge Function `push`.
@@ -26,8 +29,9 @@ você mesmo tudo o que puder.
 | Proxy/HTTPS | Nginx (`/etc/nginx/sites-available/chroma-flux`) + Let's Encrypt (certbot, renovação automática) |
 | Código em produção | `/opt/chroma-flux/current` → `/opt/chroma-flux/releases/<data>-<sha>` |
 | Variáveis | `/opt/chroma-flux/shared/.env.production` (chmod 600, dono `flux`) |
-| Banco, login, arquivos, funções | Supabase (nuvem) — migração para a VPS planejada em `deploy/supabase/MIGRAR-SUPABASE.md` |
-| DNS | registro.br: `chromaflux.com.br` e `www` → A 179.199.150.51; `send`, `rsend`, `resend._domainkey`, `_dmarc` são do Resend — **não mexer** |
+| Banco, login, arquivos, funções | Supabase auto-hospedado (Docker) nesta VPS, `/opt/supabase` (compose oficial), exposto em `https://api.chromaflux.com.br` — migrado da nuvem em 26/09/2026, roteiro em `deploy/supabase/MIGRAR-SUPABASE.md` |
+| Backup do banco | `/usr/local/bin/flux-backup` (`pg_dump` comprimido em `/opt/backups`, mantém 14 dias), cron do root às 03:30 |
+| DNS | registro.br: `chromaflux.com.br` e `www` → A 179.199.150.51; `api` → A 179.199.150.51 (Supabase); `send`, `rsend`, `resend._domainkey`, `_dmarc` são do Resend — **não mexer** |
 | Código-fonte | GitHub `igorliger/chroma-flux` (público), branch `main` |
 
 A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
@@ -50,8 +54,9 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
 - Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0028**). Cada
   migração nova também é **anexada em `supabase/schema.sql`** antes do marcador
   `13. VERIFICAÇÃO`. Tipos à mão em `src/lib/database.types.ts`.
-- Aplicar migração na nuvem: SQL Editor do Supabase ou `psql` com a connection
-  string (nunca imprimir a senha).
+- Aplicar migração na VPS: `docker exec -i supabase-db psql -U postgres -d postgres
+  -v ON_ERROR_STOP=1 < arquivo.sql`, ou Studio (túnel SSH `-L 8000:127.0.0.1:8000`,
+  http://localhost:8000). Nunca imprimir senha, JWT secret ou service_role.
 - Padrões do banco:
   - Funções `SECURITY DEFINER` sempre com `set search_path = public, pg_temp` e
     `revoke execute ... from anon, public` + `grant ... to authenticated`.
@@ -106,7 +111,9 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
 
 ## Pendências conhecidas
 
-- Migrar o Supabase para a VPS (roteiro pronto em `deploy/supabase/`).
 - Publicação automática a cada push (hoje é manual com `flux-deploy`).
-- Backup diário do banco quando ele estiver na VPS.
+- Cópia do backup diário fora da VPS (ex.: Google Drive do Igor) — a
+  combinar com ele.
+- Excluir o projeto Supabase da nuvem depois de 10/10/2026, se tudo continuar
+  estável.
 - Opcional: marcar feriados na visão de calendário.

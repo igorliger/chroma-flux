@@ -14,6 +14,11 @@
 #   6. Configura o Nginx e, se o DNS já apontar para cá, o HTTPS.
 #   7. Gera a chave que o GitHub Actions usa para publicar a cada push.
 #
+# O Supabase (banco, login, storage, functions) roda auto-hospedado (Docker)
+# nesta mesma VPS, em https://api.chromaflux.com.br — ver
+# deploy/supabase/MIGRAR-SUPABASE.md. Se esta VPS ainda não tiver o Supabase
+# rodando, esse roteiro precisa ser feito antes (ou o site sobe sem banco).
+#
 # Pode rodar de novo sem estragar nada: cada passo verifica o que já existe.
 # =============================================================================
 set -euo pipefail
@@ -22,9 +27,10 @@ DOMAIN="chromaflux.com.br"
 REPO_SSH="git@github.com:igorliger/chroma-flux.git"
 APP_USER="flux"
 APP_DIR="/opt/chroma-flux"
-SUPABASE_URL="https://zdkgujlkdtxiabxntuce.supabase.co"
-# Chave publicável: é pública por design (quem protege os dados é a RLS).
-SUPABASE_PUBLISHABLE_KEY="sb_publishable_ThtuQWYdkj0tD8iwSYUbRQ_nXrHA_bl"
+# Supabase auto-hospedado (Docker) nesta mesma VPS — ver deploy/supabase/MIGRAR-SUPABASE.md.
+SUPABASE_URL="https://api.chromaflux.com.br"
+# Chave publicável (ANON_KEY): é pública por design (quem protege os dados é a RLS).
+SUPABASE_PUBLISHABLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkwNDc2MDc2LCJleHAiOjIxMDU4MzYwNzZ9.jkwOTYosXok99g2ZBrB9rmHZml4NcAAHQJkjLrmx8bc"
 FROM_EMAIL="Chroma Flux <convites@chromaflux.com.br>"
 DEPLOY_KEY="/root/.ssh/chroma_flux_deploy"
 
