@@ -19,6 +19,24 @@ function isPublic(pathname: string) {
 const ALLOWED_WHILE_BLOCKED = ["/fora-do-horario"];
 
 /**
+ * Monta a URL de redirecionamento a partir do que o Nginx repassou, não do
+ * endereço em que o Next.js está escutando.
+ *
+ * O processo roda em `127.0.0.1:3000` atrás do proxy — `request.nextUrl`, por
+ * si só, reflete esse endereço de escuta, não o domínio público
+ * (`www.chromaflux.com.br`). Sem isto, todo redirecionamento daqui (login,
+ * fora do horário, etc.) saía apontando para "localhost:3000", que o
+ * navegador de quem acessa não tem como alcançar.
+ */
+function redirectTo(request: NextRequest, pathname: string): URL {
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const proto =
+    request.headers.get("x-forwarded-proto") ?? request.nextUrl.protocol.replace(":", "");
+  const origin = host ? `${proto}://${host}` : request.nextUrl.origin;
+  return new URL(pathname, origin);
+}
+
+/**
  * Renova o token de acesso a cada navegação e barra rotas privadas.
  *
  * O middleware é a única camada que consegue reescrever os cookies de sessão,
@@ -55,17 +73,13 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (!user && !isPublic(pathname)) {
-    const redirect = request.nextUrl.clone();
-    redirect.pathname = "/login";
+    const redirect = redirectTo(request, "/login");
     redirect.searchParams.set("proximo", pathname);
     return NextResponse.redirect(redirect);
   }
 
   if (user && (pathname === "/login" || pathname === "/cadastro")) {
-    const redirect = request.nextUrl.clone();
-    redirect.pathname = "/espacos";
-    redirect.search = "";
-    return NextResponse.redirect(redirect);
+    return NextResponse.redirect(redirectTo(request, "/espacos"));
   }
 
   // Fora da janela de uso: manda para a tela de aviso em vez do conteúdo —
@@ -79,10 +93,7 @@ export async function updateSession(request: NextRequest) {
   ) {
     const { data: bloqueado } = await supabase.rpc("is_blocked_by_access_window");
     if (bloqueado) {
-      const redirect = request.nextUrl.clone();
-      redirect.pathname = "/fora-do-horario";
-      redirect.search = "";
-      return NextResponse.redirect(redirect);
+      return NextResponse.redirect(redirectTo(request, "/fora-do-horario"));
     }
   }
 
