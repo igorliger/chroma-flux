@@ -89,7 +89,7 @@ export default async function LandingPage() {
 
       <footer className="border-t border-ink-200 py-8">
         <p className="mx-auto max-w-6xl px-6 text-sm text-ink-400">
-          Chroma Flux — gerenciamento de projetos.
+          Chroma Flux — gerenciamento de tarefas.
         </p>
       </footer>
     </div>

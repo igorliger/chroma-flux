@@ -18,7 +18,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         {/* Rodapé discreto: dá acabamento à coluna e evita que o formulário
             pareça solto no meio do branco. */}
         <p className="mx-auto mt-12 w-full max-w-sm text-xs text-ink-400">
-          Chroma Flux — gerenciamento de projetos.
+          Chroma Flux — gerenciamento de tarefas.
         </p>
       </div>
 

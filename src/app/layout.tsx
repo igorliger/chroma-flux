@@ -6,7 +6,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Chroma Flux — gerenciamento de projetos",
+    default: "Chroma Flux — gerenciamento de tarefas",
     template: "%s · Chroma Flux",
   },
   description:
