@@ -3,7 +3,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { registerAttachmentAction } from "@/app/actions/attachments";
-import { BUCKET, buildStoragePath, validateFile } from "@/lib/attachments";
+import { registerPersonalAttachmentAction } from "@/app/actions/personal-tasks";
+import { BUCKET, buildPersonalStoragePath, buildStoragePath, validateFile } from "@/lib/attachments";
 import type { Database } from "@/lib/database.types";
 
 /**
@@ -60,6 +61,56 @@ export async function uploadAttachments(
 
     if (resultado.error) {
       // O arquivo já subiu: sem esta limpeza, ficaria no bucket sem registro.
+      await supabase.storage.from(BUCKET).remove([caminho]);
+      erros.push(resultado.error);
+    }
+  }
+
+  return erros;
+}
+
+/**
+ * Mesma sequência de `uploadAttachments`, para lembretes pessoais: sem
+ * espaço de trabalho, sem comentário associado.
+ */
+export async function uploadPersonalAttachments(
+  supabase: SupabaseClient<Database>,
+  destino: { ownerId: string; taskId: string },
+  arquivos: File[],
+): Promise<string[]> {
+  const erros: string[] = [];
+
+  for (const arquivo of arquivos) {
+    const recusa = validateFile(arquivo);
+    if (recusa) {
+      erros.push(recusa);
+      continue;
+    }
+
+    const caminho = buildPersonalStoragePath(destino.ownerId, destino.taskId, arquivo.name);
+
+    const { error: erroEnvio } = await supabase.storage
+      .from(BUCKET)
+      .upload(caminho, arquivo, {
+        contentType: arquivo.type || undefined,
+        upsert: false,
+      });
+
+    if (erroEnvio) {
+      erros.push(`Falha ao enviar “${arquivo.name}”: ${erroEnvio.message}`);
+      continue;
+    }
+
+    const resultado = await registerPersonalAttachmentAction({
+      taskId: destino.taskId,
+      ownerId: destino.ownerId,
+      storagePath: caminho,
+      fileName: arquivo.name,
+      mimeType: arquivo.type || "application/octet-stream",
+      sizeBytes: arquivo.size,
+    });
+
+    if (resultado.error) {
       await supabase.storage.from(BUCKET).remove([caminho]);
       erros.push(resultado.error);
     }

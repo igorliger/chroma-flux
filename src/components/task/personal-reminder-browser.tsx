@@ -39,8 +39,10 @@ const SORT_STORAGE_KEY = "chroma-flux:ordem-lembretes";
  */
 export function PersonalReminderBrowser({
   reminders,
+  currentUserId,
 }: {
   reminders: PersonalTaskOverview[];
+  currentUserId: string;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -209,6 +211,7 @@ export function PersonalReminderBrowser({
         open={novoAberto}
         onClose={() => setNovoAberto(false)}
         onCreated={() => router.refresh()}
+        currentUserId={currentUserId}
       />
 
       {openTask && (

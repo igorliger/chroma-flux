@@ -65,6 +65,19 @@ export function buildStoragePath(
   return `${workspaceId}/${taskId}/${crypto.randomUUID()}-${sanitizeFileName(fileName)}`;
 }
 
+/**
+ * Mesma ideia de `buildStoragePath`, para lembretes pessoais (migração 0030):
+ * a primeira pasta é o literal `pessoal`, e a segunda é o dono — não há
+ * workspace para as policies do Storage checarem.
+ */
+export function buildPersonalStoragePath(
+  ownerId: string,
+  taskId: string,
+  fileName: string,
+): string {
+  return `pessoal/${ownerId}/${taskId}/${crypto.randomUUID()}-${sanitizeFileName(fileName)}`;
+}
+
 /** Mensagem de recusa, ou `null` se o arquivo passa. */
 export function validateFile(file: File): string | null {
   if (file.size === 0) return `“${file.name}” está vazio.`;

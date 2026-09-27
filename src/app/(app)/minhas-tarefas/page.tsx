@@ -72,7 +72,7 @@ export default async function MyTasksPage() {
               por espaço de trabalho. */}
           <div>
             <h2 className="mb-3 text-sm font-semibold text-ink-700">Meus lembretes</h2>
-            <PersonalReminderBrowser reminders={lembretes} />
+            <PersonalReminderBrowser reminders={lembretes} currentUserId={user.id} />
           </div>
 
           {comTarefas.length === 0 ? (

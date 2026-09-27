@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/queries";
+import { MAX_ATTACHMENT_BYTES } from "@/lib/attachments";
 import type { PersonalTaskUpdate } from "@/lib/database.types";
 
 /**
@@ -349,6 +350,95 @@ export async function bulkDeletePersonalTasksAction(
 
   revalidateReminders();
   return { count: count ?? parsed.data.taskIds.length };
+}
+
+// ---------------------------------------------------------------------------
+// Anexos (migração 0030) — mesmo padrão de `actions/attachments.ts`: o
+// arquivo sobe do navegador direto para o Storage, e só os metadados passam
+// por aqui.
+// ---------------------------------------------------------------------------
+const registerAttachmentSchema = z.object({
+  taskId: uuid,
+  ownerId: uuid,
+  storagePath: z.string().min(1).max(512),
+  fileName: z.string().trim().min(1).max(255),
+  mimeType: z.string().max(255).default("application/octet-stream"),
+  sizeBytes: z.number().int().min(0).max(MAX_ATTACHMENT_BYTES),
+});
+
+export async function registerPersonalAttachmentAction(input: {
+  taskId: string;
+  ownerId: string;
+  storagePath: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+}): Promise<{ error?: string }> {
+  const parsed = registerAttachmentSchema.safeParse(input);
+  if (!parsed.success) return { error: "Dados do anexo inválidos." };
+
+  const { taskId, ownerId, storagePath, fileName, mimeType, sizeBytes } = parsed.data;
+
+  // O caminho precisa começar por `pessoal/{ownerId}/`: é dali que as
+  // policies do Storage derivam a permissão (ver migração 0030).
+  if (!storagePath.startsWith(`pessoal/${ownerId}/`)) {
+    return { error: "Caminho do arquivo não corresponde a este lembrete." };
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("personal_task_attachments").insert({
+    owner_id: ownerId,
+    task_id: taskId,
+    storage_path: storagePath,
+    file_name: fileName,
+    mime_type: mimeType,
+    size_bytes: sizeBytes,
+  });
+
+  if (error) return { error: friendlyError(error.code, error.message) };
+
+  revalidateReminders();
+  return {};
+}
+
+/**
+ * Remove o anexo: primeiro o arquivo, depois o registro — mesma ordem de
+ * `deleteAttachmentAction`, pelo mesmo motivo (um registro órfão aparece na
+ * lista e pode ser removido; um arquivo órfão no Storage, não).
+ */
+export async function deletePersonalAttachmentAction(
+  attachmentId: string,
+): Promise<{ error?: string }> {
+  if (!uuid.safeParse(attachmentId).success) return { error: "Anexo inválido." };
+
+  const supabase = await createClient();
+
+  const { data: anexo } = await supabase
+    .from("personal_task_attachments")
+    .select("storage_path")
+    .eq("id", attachmentId)
+    .maybeSingle();
+
+  if (!anexo) return { error: "Anexo não encontrado." };
+
+  const { error: erroArquivo } = await supabase.storage
+    .from("anexos")
+    .remove([anexo.storage_path]);
+
+  if (erroArquivo && !erroArquivo.message.toLowerCase().includes("not found")) {
+    return { error: "Não foi possível remover o arquivo." };
+  }
+
+  const { error } = await supabase
+    .from("personal_task_attachments")
+    .delete()
+    .eq("id", attachmentId);
+
+  if (error) return { error: friendlyError(error.code, error.message) };
+
+  revalidateReminders();
+  return {};
 }
 
 export async function bulkCompletePersonalTasksAction(

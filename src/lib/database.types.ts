@@ -113,6 +113,20 @@ export type PersonalTaskRow = {
   updated_at: string;
 };
 
+/** Anexo de um lembrete pessoal (migração 0030) — mesmo bucket dos anexos de
+ *  espaço, caminho `pessoal/{owner_id}/{task_id}/...` em vez de
+ *  `{workspace_id}/{task_id}/...`. */
+export type PersonalTaskAttachmentRow = {
+  id: string;
+  owner_id: string;
+  task_id: string;
+  storage_path: string;
+  file_name: string;
+  mime_type: string;
+  size_bytes: number;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -555,6 +569,20 @@ export type Database = {
         };
         Relationships: [];
       };
+      personal_task_attachments: {
+        Row: PersonalTaskAttachmentRow;
+        Insert: {
+          id?: string;
+          owner_id: string;
+          task_id: string;
+          storage_path: string;
+          file_name: string;
+          mime_type?: string;
+          size_bytes: number;
+        };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
       workspace_invitations: {
         Row: {
           id: string;
@@ -694,6 +722,7 @@ export type TaskUpdate = Tables["tasks"]["Update"];
 export type TaskOverview = Database["public"]["Views"]["task_overview"]["Row"];
 
 export type PersonalTask = Tables["personal_tasks"]["Row"];
+export type PersonalTaskAttachment = Tables["personal_task_attachments"]["Row"];
 /** Campos aceitos num UPDATE de lembrete pessoal. */
 export type PersonalTaskUpdate = Tables["personal_tasks"]["Update"];
 /** Linha da view `personal_task_overview`: lembrete + contadores. */

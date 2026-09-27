@@ -10,6 +10,7 @@ import {
   setPersonalTaskScheduleAction,
 } from "@/app/actions/personal-tasks";
 import { DueDateField } from "@/components/task/due-date-field";
+import { PersonalAttachments } from "@/components/task/personal-attachments";
 import { extractUrls } from "@/lib/links";
 import { LinkPreview } from "@/components/link-preview";
 import {
@@ -284,6 +285,14 @@ export function PersonalReminderPanel({
               .map((url) => (
                 <LinkPreview key={url} url={url} />
               ))}
+
+            <div className="mt-3">
+              <PersonalAttachments
+                ownerId={task.owner_id}
+                taskId={task.id}
+                onChanged={() => startTransition(onChanged)}
+              />
+            </div>
           </section>
 
           <section className="mt-6">
@@ -342,6 +351,11 @@ export function PersonalReminderPanel({
                           <Trash2 className="size-3.5" />
                         </IconButton>
                       </form>
+                    </div>
+
+                    {/* Subtarefa é um lembrete: recebe anexos pelo mesmo caminho. */}
+                    <div className="ml-6 mt-1">
+                      <PersonalAttachments ownerId={task.owner_id} taskId={subtask.id} compact />
                     </div>
                   </li>
                 ))}
