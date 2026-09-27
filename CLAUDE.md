@@ -30,7 +30,7 @@ você mesmo tudo o que puder.
 | Código em produção | `/opt/chroma-flux/current` → `/opt/chroma-flux/releases/<data>-<sha>` |
 | Variáveis | `/opt/chroma-flux/shared/.env.production` (chmod 600, dono `flux`) |
 | Banco, login, arquivos, funções | Supabase auto-hospedado (Docker) nesta VPS, `/opt/supabase` (compose oficial), exposto em `https://api.chromaflux.com.br` — migrado da nuvem em 26/09/2026, roteiro em `deploy/supabase/MIGRAR-SUPABASE.md` |
-| Backup do banco | `/usr/local/bin/flux-backup` (`pg_dump` comprimido em `/opt/backups`, mantém 14 dias), cron do root às 03:30 |
+| Backup do banco | `/usr/local/bin/flux-backup` (`pg_dump` comprimido em `/opt/backups`, mantém 14 dias) + cópia no Google Drive do Igor via `rclone` (pasta "Chroma Flux - Backups", sem limite de dias), cron do root às 03:30. Config do rclone em `/root/.config/rclone/rclone.conf` (chmod 600) — nunca imprimir o token |
 | DNS | registro.br: `chromaflux.com.br` e `www` → A 179.199.150.51; `api` → A 179.199.150.51 (Supabase); `send`, `rsend`, `resend._domainkey`, `_dmarc` são do Resend — **não mexer** |
 | Código-fonte | GitHub `igorliger/chroma-flux` (público), branch `main` |
 
@@ -112,8 +112,6 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
 ## Pendências conhecidas
 
 - Publicação automática a cada push (hoje é manual com `flux-deploy`).
-- Cópia do backup diário fora da VPS (ex.: Google Drive do Igor) — a
-  combinar com ele.
 - Excluir o projeto Supabase da nuvem depois de 10/10/2026, se tudo continuar
   estável.
 - Opcional: marcar feriados na visão de calendário.
