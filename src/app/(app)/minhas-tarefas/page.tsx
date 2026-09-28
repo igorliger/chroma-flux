@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 
 import { signOutAction } from "@/app/actions/auth";
 import { WorkspacesShell } from "@/components/layout/workspaces-shell";
-import { TaskBrowser } from "@/components/workspace/task-browser";
-import { PersonalReminderBrowser } from "@/components/task/personal-reminder-browser";
-import { EmptyState } from "@/components/ui";
+import { MyTasksBrowser } from "@/components/task/my-tasks-browser";
+import type { UnifiedSpace } from "@/components/task/new-unified-task-dialog";
 import {
   getMyProfile,
   listPersonalBoards,
@@ -12,17 +11,17 @@ import {
   listWorkspaces,
   requireUser,
 } from "@/lib/queries";
-import { EMPTY_FILTERS } from "@/lib/filters";
 import { taskPermissions } from "@/lib/permissions";
-import { accentClass } from "@/lib/utils";
+import { adaptarLembrete, adaptarTarefaDeEspaco, type UnifiedTask } from "@/lib/unified-tasks";
+import type { PersonRef } from "@/lib/database.types";
 
 export const metadata: Metadata = { title: "Minhas tarefas" };
 
 /**
- * Tudo que está sob responsabilidade da pessoa, atravessando todos os
- * espaços de que ela participa — diferente de "Tarefas", que fica dentro de
- * um único espaço. Uma seção por espaço, cada uma com seu próprio
- * `TaskBrowser`, já que criar e filtrar são ações de um espaço por vez.
+ * Tudo que está sob responsabilidade da pessoa — tarefas de qualquer espaço
+ * de que ela participa e lembretes pessoais — numa lista só, em vez de um
+ * bloco por espaço mais um bloco de lembretes. Ver `lib/unified-tasks.ts`
+ * pelo porquê da junção.
  *
  * Fica fora de `e/[workspaceId]`, então não herda o `AppShell` daquele
  * layout — por isso monta a mesma casca que a tela de espaços usa
@@ -37,9 +36,22 @@ export default async function MyTasksPage() {
     getMyProfile(),
   ]);
 
-  const comTarefas = quadros.filter(
-    (q) => q.designadas.length > 0 || q.particulares.length > 0,
-  );
+  const tarefas: UnifiedTask[] = [
+    ...quadros.flatMap((q) => [...q.designadas, ...q.particulares].map(adaptarTarefaDeEspaco)),
+    ...lembretes.map((l) => adaptarLembrete(l, user.id)),
+  ];
+
+  const spaces: UnifiedSpace[] = quadros.map((q) => ({
+    id: q.workspace.id,
+    name: q.workspace.name,
+    color: q.workspace.color,
+    people: q.people,
+    permissoes: taskPermissions(q.capabilities),
+  }));
+
+  const perfilPessoa: PersonRef = perfil
+    ? { id: perfil.id, full_name: perfil.full_name, email: perfil.email, avatar_url: perfil.avatar_url }
+    : { id: user.id, full_name: "", email: user.email ?? "", avatar_url: null };
 
   const shellProps = {
     workspaces: workspaces.map((w) => ({
@@ -62,53 +74,12 @@ export default async function MyTasksPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Minhas tarefas</h1>
           <p className="mt-1 text-sm text-ink-500">
-            Tudo que está sob sua responsabilidade, em todos os seus espaços.
+            Tudo que está sob sua responsabilidade — em todos os seus espaços e os seus lembretes
+            pessoais — num lugar só.
           </p>
         </div>
 
-        <div className="space-y-8">
-          {/* Lembretes pessoais: não pertencem a nenhum espaço, só a quem os
-              criou (migração 0029) — por isso vêm antes, fora do agrupamento
-              por espaço de trabalho. */}
-          <div>
-            <h2 className="mb-3 text-sm font-semibold text-ink-700">Meus lembretes</h2>
-            <PersonalReminderBrowser reminders={lembretes} currentUserId={user.id} />
-          </div>
-
-          {comTarefas.length === 0 ? (
-            <EmptyState
-              title="Nada atribuído a você em algum espaço"
-              description="Quando alguém marcar você como responsável em algum espaço, a tarefa aparece aqui."
-            />
-          ) : (
-            comTarefas.map((quadro) => (
-              <div key={quadro.workspace.id}>
-                <div className="mb-3 flex items-center gap-2">
-                  <span
-                    className={`size-2 shrink-0 rounded-full ${accentClass(quadro.workspace.color)}`}
-                    aria-hidden
-                  />
-                  <h2 className="text-sm font-semibold text-ink-700">{quadro.workspace.name}</h2>
-                </div>
-
-                <TaskBrowser
-                  tasks={[...quadro.designadas, ...quadro.particulares]}
-                  people={quadro.people}
-                  permissoes={taskPermissions(quadro.capabilities)}
-                  currentUserId={user.id}
-                  workspaceId={quadro.workspace.id}
-                  initialFilters={{ ...EMPTY_FILTERS, status: "open" }}
-                  emptyTitle="Nada atribuído a você aqui"
-                  emptyDescription="Quando alguém marcar você como responsável, a tarefa aparece aqui."
-                  allowCreate
-                  // A tarefa nasce atribuída a quem a cria: criar algo em "Minhas
-                  // tarefas" e não vê-lo na lista seria desconcertante.
-                  assignToMeByDefault
-                />
-              </div>
-            ))
-          )}
-        </div>
+        <MyTasksBrowser tasks={tarefas} currentUserId={user.id} perfil={perfilPessoa} spaces={spaces} />
       </div>
     </WorkspacesShell>
   );
