@@ -218,6 +218,27 @@ export function MyTasksBrowser({
   // não depende de permissão de espaço nenhuma.
   const podeSelecionar = true;
 
+  /**
+   * Permissão de verdade por item: lembrete/tarefa particular é sempre do
+   * próprio dono (pode editar, concluir e excluir); tarefa de espaço segue a
+   * matriz daquele espaço especificamente — que pode restringir bem mais que
+   * isso pra quem é só membro. Sem isto, a barra de seleção mostrava
+   * "Excluir" pra quem só tinha permissão de concluir.
+   */
+  function permiteAcao(t: UnifiedTask, campo: "edit" | "complete" | "delete"): boolean {
+    if (t.origem === "lembrete") return true;
+    return spaceById.get(t.workspace_id)?.permissoes[campo] ?? false;
+  }
+
+  // Antes de selecionar algo, a barra reflete o que há na tela inteira —
+  // assim que a seleção existe, passa a refletir só o que foi marcado.
+  const baseParaPermissao =
+    selecionadas.size > 0 ? optimisticTasks.filter((t) => selecionadas.has(t.id)) : optimisticTasks;
+  const podeEditarSelecao = baseParaPermissao.some(
+    (t) => permiteAcao(t, "edit") || permiteAcao(t, "complete"),
+  );
+  const podeExcluirSelecao = baseParaPermissao.some((t) => permiteAcao(t, "delete"));
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -265,8 +286,8 @@ export function MyTasksBrowser({
                 : new Set(visibleTasks.map((t) => t.id)),
             )
           }
-          canEdit
-          canDelete
+          canEdit={podeEditarSelecao}
+          canDelete={podeExcluirSelecao}
           pending={bulkPending}
           onComplete={() => handleBulkComplete(true)}
           onReopen={() => handleBulkComplete(false)}
