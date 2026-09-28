@@ -6,14 +6,15 @@ import { ChevronRight, Lock } from "lucide-react";
 import { NewTaskDialog } from "@/components/task/new-task-dialog";
 import { NewPersonalReminderDialog } from "@/components/task/new-personal-reminder-dialog";
 import { Modal } from "@/components/ui";
-import { accentClass, cn } from "@/lib/utils";
-import type { PersonRef } from "@/lib/database.types";
+import { accentClass, canAdminister, cn } from "@/lib/utils";
+import type { PersonRef, WorkspaceRole } from "@/lib/database.types";
 import type { TaskPermissions } from "@/lib/permissions";
 
 export type UnifiedSpace = {
   id: string;
   name: string;
   color: string;
+  role: WorkspaceRole;
   people: PersonRef[];
   permissoes: TaskPermissions;
 };
@@ -45,7 +46,14 @@ export function NewUnifiedTaskDialog({
     onClose();
   }
 
-  if (destino === "pessoal") {
+  // Escolher o espaço é coisa de quem administra — membro só vê "Pessoal"
+  // aqui (mesmo tendo permissão de criar tarefa dentro do próprio espaço,
+  // pela tela "Tarefas" de lá). Sem opção de espaço nenhuma, nem faz sentido
+  // perguntar: pula direto pro lembrete.
+  const podeCriarEm = spaces.filter((s) => s.permissoes.create && canAdminister(s.role));
+  const destinoEfetivo = destino || (podeCriarEm.length === 0 ? "pessoal" : "");
+
+  if (destinoEfetivo === "pessoal") {
     return (
       <NewPersonalReminderDialog
         open={open}
@@ -56,7 +64,7 @@ export function NewUnifiedTaskDialog({
     );
   }
 
-  const espaco = spaces.find((s) => s.id === destino);
+  const espaco = spaces.find((s) => s.id === destinoEfetivo);
   if (espaco) {
     return (
       <NewTaskDialog
@@ -71,8 +79,6 @@ export function NewUnifiedTaskDialog({
       />
     );
   }
-
-  const podeCriarEm = spaces.filter((s) => s.permissoes.create);
 
   return (
     <Modal open={open} onClose={fechar} title="Nova tarefa" size="sm">

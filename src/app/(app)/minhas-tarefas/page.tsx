@@ -45,6 +45,7 @@ export default async function MyTasksPage() {
     id: q.workspace.id,
     name: q.workspace.name,
     color: q.workspace.color,
+    role: q.role,
     people: q.people,
     permissoes: taskPermissions(q.capabilities),
   }));
