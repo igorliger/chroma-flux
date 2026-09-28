@@ -6,18 +6,12 @@ import { AlertTriangle, CalendarClock, CheckCircle2, CircleDot } from "lucide-re
 
 import { signOutAction } from "@/app/actions/auth";
 import { WorkspacesShell } from "@/components/layout/workspaces-shell";
+import { DashboardTaskRow } from "@/components/dashboard/task-row";
 import { Avatar } from "@/components/ui";
 import { getMyProfile, getOwnerDashboard, listWorkspaces, requireUser } from "@/lib/queries";
-import type { PersonRef, TaskOverview } from "@/lib/database.types";
-import {
-  accentClass,
-  cn,
-  dueDateMeta,
-  isDoneFor,
-  isResponsible,
-  responsibleIds,
-  todayISO,
-} from "@/lib/utils";
+import { isOverdueNow, type DashboardFiltro } from "@/lib/dashboard";
+import type { TaskOverview } from "@/lib/database.types";
+import { accentClass, cn, dueDateMeta, isDoneFor, isResponsible, todayISO } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -48,26 +42,24 @@ export default async function OwnerDashboardPage() {
   const espacoPorId = new Map(dados.workspaces.map((w) => [w.id, w]));
   const pessoaPorId = new Map(people.map((p) => [p.id, p]));
 
-  /**
-   * Atrasada de verdade: leva a hora em conta, não só o dia — a mesma regra
-   * de `dueDateMeta` usada na lista de tarefas. `isOverdue` sozinha compara
-   * só o dia, então uma tarefa de hoje com horário já passado (14h, e são
-   * 16h) não aparecia aqui, embora já apareça atrasada em "Tarefas".
-   */
-  function atrasada(t: TaskOverview) {
-    return !t.is_completed && !!dueDateMeta(t.due_date, false, t.due_time, agora)?.overdue;
-  }
+  const atrasada = (t: TaskOverview) => isOverdueNow(t, agora);
 
   const abertas = tasks.filter((t) => !t.is_completed);
   const atrasadas = abertas.filter(atrasada);
   const paraHoje = abertas.filter((t) => t.due_date === hoje);
   const concluidas7 = tasks.filter((t) => t.is_completed);
 
-  const numeros = [
-    { label: "Em aberto", valor: abertas.length, icon: CircleDot, tom: "text-brand-600 bg-brand-50" },
-    { label: "Atrasadas", valor: atrasadas.length, icon: AlertTriangle, tom: "text-rose-600 bg-rose-50" },
-    { label: "Vencem hoje", valor: paraHoje.length, icon: CalendarClock, tom: "text-amber-600 bg-amber-50" },
-    { label: "Concluídas em 7 dias", valor: concluidas7.length, icon: CheckCircle2, tom: "text-emerald-600 bg-emerald-50" },
+  const numeros: {
+    label: string;
+    valor: number;
+    icon: typeof CircleDot;
+    tom: string;
+    filtro: DashboardFiltro;
+  }[] = [
+    { label: "Em aberto", valor: abertas.length, icon: CircleDot, tom: "text-brand-600 bg-brand-50", filtro: "abertas" },
+    { label: "Atrasadas", valor: atrasadas.length, icon: AlertTriangle, tom: "text-rose-600 bg-rose-50", filtro: "atrasadas" },
+    { label: "Vencem hoje", valor: paraHoje.length, icon: CalendarClock, tom: "text-amber-600 bg-amber-50", filtro: "hoje" },
+    { label: "Concluídas em 7 dias", valor: concluidas7.length, icon: CheckCircle2, tom: "text-emerald-600 bg-emerald-50", filtro: "concluidas" },
   ];
 
   const porEspaco = dados.workspaces.map((w) => {
@@ -119,46 +111,6 @@ export default async function OwnerDashboardPage() {
     )
     .slice(0, 15);
 
-  function Pendentes({ t }: { t: TaskOverview }) {
-    const ids = responsibleIds(t).filter((id) => !isDoneFor(t, id));
-    const lista = ids.map((id) => pessoaPorId.get(id)).filter((p): p is PersonRef => !!p);
-    if (lista.length === 0) return <span className="text-xs text-ink-400">sem responsável</span>;
-    return (
-      <span className="flex -space-x-1.5" title={lista.map((p) => p.full_name || p.email).join(", ")}>
-        {lista.slice(0, 4).map((p) => (
-          <Avatar key={p.id} id={p.id} name={p.full_name} email={p.email} size="xs" className="ring-2 ring-surface" />
-        ))}
-        {lista.length > 4 && (
-          <span className="inline-flex size-5 items-center justify-center rounded-full bg-ink-200 text-[9px] font-semibold text-ink-700 ring-2 ring-surface">
-            +{lista.length - 4}
-          </span>
-        )}
-      </span>
-    );
-  }
-
-  function LinhaTarefa({ t, direita }: { t: TaskOverview; direita: React.ReactNode }) {
-    const espaco = espacoPorId.get(t.workspace_id);
-    return (
-      <li>
-        <Link
-          href={`/e/${t.workspace_id}/tarefas`}
-          className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-ink-50"
-        >
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-ink-800">{t.title}</p>
-            <p className="flex items-center gap-1.5 text-xs text-ink-500">
-              <span className={cn("size-1.5 rounded-full", accentClass(espaco?.color ?? ""))} />
-              {espaco?.name}
-            </p>
-          </div>
-          <Pendentes t={t} />
-          <span className="w-24 shrink-0 text-right text-xs">{direita}</span>
-        </Link>
-      </li>
-    );
-  }
-
   const cartao = "rounded-[--radius-card] border border-ink-200 bg-surface shadow-sm";
 
   return (
@@ -175,16 +127,20 @@ export default async function OwnerDashboardPage() {
           </p>
         </header>
 
-        {/* Números gerais */}
+        {/* Números gerais — cada um leva pra lista completa da categoria. */}
         <section aria-label="Resumo" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {numeros.map(({ label, valor, icon: Icon, tom }) => (
-            <div key={label} className={cn(cartao, "p-4")}>
+          {numeros.map(({ label, valor, icon: Icon, tom, filtro }) => (
+            <Link
+              key={label}
+              href={`/dashboard/tarefas?filtro=${filtro}`}
+              className={cn(cartao, "block p-4 transition-colors hover:border-brand-300 hover:bg-ink-50")}
+            >
               <span className={cn("inline-flex size-8 items-center justify-center rounded-lg", tom)}>
                 <Icon className="size-4" aria-hidden />
               </span>
               <p className="mt-3 text-2xl font-semibold tabular-nums text-ink-900">{valor}</p>
               <p className="text-sm text-ink-500">{label}</p>
-            </div>
+            </Link>
           ))}
         </section>
 
@@ -272,11 +228,18 @@ export default async function OwnerDashboardPage() {
 
           {/* Atrasadas */}
           <section className={cn(cartao, "overflow-hidden")}>
-            <h2 className="flex items-center gap-2 px-5 pt-5 font-semibold text-ink-900">
-              <AlertTriangle className="size-4 text-danger-fg" aria-hidden />
-              Atrasadas
-              <span className="text-sm font-normal text-ink-400">({atrasadas.length})</span>
-            </h2>
+            <div className="flex items-center justify-between px-5 pt-5">
+              <h2 className="flex items-center gap-2 font-semibold text-ink-900">
+                <AlertTriangle className="size-4 text-danger-fg" aria-hidden />
+                Atrasadas
+                <span className="text-sm font-normal text-ink-400">({atrasadas.length})</span>
+              </h2>
+              {atrasadas.length > 0 && (
+                <Link href="/dashboard/tarefas?filtro=atrasadas" className="text-xs font-medium text-brand-600 hover:underline">
+                  Ver todas
+                </Link>
+              )}
+            </div>
             {listaAtrasadas.length === 0 ? (
               <p className="px-5 pb-5 pt-4 text-sm text-ink-500">Nada atrasado.</p>
             ) : (
@@ -287,9 +250,11 @@ export default async function OwnerDashboardPage() {
                   // soaria estranho — o prazo já passou hoje mesmo.
                   const rotulo = dias <= 0 ? "Hoje" : dias === 1 ? "1 dia" : `${dias} dias`;
                   return (
-                    <LinhaTarefa
+                    <DashboardTaskRow
                       key={t.id}
                       t={t}
+                      espaco={espacoPorId.get(t.workspace_id)}
+                      pessoaPorId={pessoaPorId}
                       direita={<span className="font-semibold text-danger-fg">{rotulo}</span>}
                     />
                   );
@@ -301,10 +266,17 @@ export default async function OwnerDashboardPage() {
 
         {/* Próximos 7 dias */}
         <section className={cn(cartao, "mt-6 overflow-hidden")}>
-          <h2 className="flex items-center gap-2 px-5 pt-5 font-semibold text-ink-900">
-            <CalendarClock className="size-4 text-amber-600" aria-hidden />
-            Próximos 7 dias
-          </h2>
+          <div className="flex items-center justify-between px-5 pt-5">
+            <h2 className="flex items-center gap-2 font-semibold text-ink-900">
+              <CalendarClock className="size-4 text-amber-600" aria-hidden />
+              Próximos 7 dias
+            </h2>
+            {paraHoje.length > 0 && (
+              <Link href="/dashboard/tarefas?filtro=hoje" className="text-xs font-medium text-brand-600 hover:underline">
+                Ver de hoje
+              </Link>
+            )}
+          </div>
           {proximas.length === 0 ? (
             <p className="px-5 pb-5 pt-4 text-sm text-ink-500">Nada vencendo nos próximos dias.</p>
           ) : (
@@ -312,9 +284,11 @@ export default async function OwnerDashboardPage() {
               {proximas.map((t) => {
                 const meta = dueDateMeta(t.due_date, false, t.due_time, agora);
                 return (
-                  <LinhaTarefa
+                  <DashboardTaskRow
                     key={t.id}
                     t={t}
+                    espaco={espacoPorId.get(t.workspace_id)}
+                    pessoaPorId={pessoaPorId}
                     direita={
                       <span className="text-ink-600">
                         {meta?.label}
