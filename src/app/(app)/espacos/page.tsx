@@ -121,7 +121,10 @@ export default async function WorkspacesPage({
               {workspaces.map((workspace) => (
                 <li key={workspace.id}>
                   <Link
-                    href={`/e/${workspace.id}`}
+                    // Entrar no espaço abre a lista de tarefas direto — o
+                    // Painel continua existindo, só não é mais a porta de
+                    // entrada (o menu lateral leva a ele quando quiser).
+                    href={`/e/${workspace.id}/tarefas`}
                     className="group block h-full rounded-[--radius-card] border border-ink-200 bg-surface p-5 shadow-sm transition-shadow hover:shadow-md"
                   >
                     <div className="flex items-start justify-between gap-3">

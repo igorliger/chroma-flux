@@ -88,7 +88,7 @@ export function WorkspaceSwitcher({
               return (
                 <li key={w.id}>
                   <Link
-                    href={`/e/${w.id}`}
+                    href={`/e/${w.id}/tarefas`}
                     role="menuitem"
                     className={cn(
                       "flex items-center gap-2.5 px-3 py-2 text-sm transition-colors",
