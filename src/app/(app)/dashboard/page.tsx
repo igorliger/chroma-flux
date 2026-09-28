@@ -14,7 +14,6 @@ import {
   cn,
   dueDateMeta,
   isDoneFor,
-  isOverdue,
   isResponsible,
   responsibleIds,
   todayISO,
@@ -49,8 +48,18 @@ export default async function OwnerDashboardPage() {
   const espacoPorId = new Map(dados.workspaces.map((w) => [w.id, w]));
   const pessoaPorId = new Map(people.map((p) => [p.id, p]));
 
+  /**
+   * Atrasada de verdade: leva a hora em conta, não só o dia — a mesma regra
+   * de `dueDateMeta` usada na lista de tarefas. `isOverdue` sozinha compara
+   * só o dia, então uma tarefa de hoje com horário já passado (14h, e são
+   * 16h) não aparecia aqui, embora já apareça atrasada em "Tarefas".
+   */
+  function atrasada(t: TaskOverview) {
+    return !t.is_completed && !!dueDateMeta(t.due_date, false, t.due_time, agora)?.overdue;
+  }
+
   const abertas = tasks.filter((t) => !t.is_completed);
-  const atrasadas = abertas.filter((t) => isOverdue(t.due_date, false));
+  const atrasadas = abertas.filter(atrasada);
   const paraHoje = abertas.filter((t) => t.due_date === hoje);
   const concluidas7 = tasks.filter((t) => t.is_completed);
 
@@ -68,7 +77,7 @@ export default async function OwnerDashboardPage() {
     return {
       ...w,
       abertas: abertasW.length,
-      atrasadas: abertasW.filter((t) => isOverdue(t.due_date, false)).length,
+      atrasadas: abertasW.filter(atrasada).length,
       hoje: abertasW.filter((t) => t.due_date === hoje).length,
       concluidas: concluidasW,
       // ritmo da semana: concluídas / (concluídas + em aberto)
@@ -83,7 +92,7 @@ export default async function OwnerDashboardPage() {
     .map((p) => ({
       pessoa: p,
       abertas: tasks.filter((t) => pendentePara(t, p.id)).length,
-      atrasadas: tasks.filter((t) => pendentePara(t, p.id) && isOverdue(t.due_date, false)).length,
+      atrasadas: tasks.filter((t) => pendentePara(t, p.id) && atrasada(t)).length,
       concluidas: tasks.filter(
         (t) =>
           isResponsible(t, p.id) &&
@@ -274,15 +283,14 @@ export default async function OwnerDashboardPage() {
               <ul className="mt-3 divide-y divide-ink-100">
                 {listaAtrasadas.map((t) => {
                   const dias = t.due_date ? -differenceInCalendarDays(parseISO(t.due_date), agora) : 0;
+                  // Mesmo dia, só passou da hora (0 dias de diferença): "0 dias"
+                  // soaria estranho — o prazo já passou hoje mesmo.
+                  const rotulo = dias <= 0 ? "Hoje" : dias === 1 ? "1 dia" : `${dias} dias`;
                   return (
                     <LinhaTarefa
                       key={t.id}
                       t={t}
-                      direita={
-                        <span className="font-semibold text-danger-fg">
-                          {dias === 1 ? "1 dia" : `${dias} dias`}
-                        </span>
-                      }
+                      direita={<span className="font-semibold text-danger-fg">{rotulo}</span>}
                     />
                   );
                 })}
