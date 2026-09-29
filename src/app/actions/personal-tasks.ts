@@ -106,6 +106,9 @@ function revalidateReminders() {
 }
 
 function friendlyError(code?: string, message?: string) {
+  // Recusas com texto próprio (ex.: concluir antes do prazo) já vêm prontas
+  // para mostrar — mesmo padrão de `actions/tasks.ts`.
+  if (code === "42501" && message?.startsWith("Você ")) return message;
   if (code === "42501") return "Você não tem permissão para esta ação.";
   if (code === "23503") return "Referência inválida para este lembrete.";
   if (code === "23514") {
