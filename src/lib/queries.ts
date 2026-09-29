@@ -25,6 +25,7 @@ import type {
   WorkspaceRole,
 } from "@/lib/database.types";
 import { isResponsible } from "@/lib/utils";
+import { adaptarLembrete, adaptarTarefaDeEspaco, type UnifiedTask } from "@/lib/unified-tasks";
 
 export type { TaskOverview };
 
@@ -1053,31 +1054,44 @@ export async function canICreateWorkspace(): Promise<boolean> {
 
 export type OwnerDashboardData = {
   workspaces: { id: string; name: string; color: string }[];
-  /** Abertas + concluídas nos últimos 7 dias, de todos os espaços do dono. */
-  tasks: TaskOverview[];
+  /**
+   * Abertas + concluídas nos últimos 7 dias, de todos os espaços do dono,
+   * mais os lembretes pessoais do próprio dono (adaptados pro formato de
+   * tarefa — ver `lib/unified-tasks.ts` — com `workspace_id` vazio).
+   */
+  tasks: UnifiedTask[];
   people: PersonRef[];
 };
 
 /**
  * Dados do Dashboard do proprietário: tudo o que está em aberto em todos os
  * espaços de que a pessoa é dona, mais o que foi concluído na última semana
- * (para medir o ritmo). Tarefas particulares ficam de fora — são de quem as
- * criou. Subtarefas também: o resumo é por tarefa.
+ * (para medir o ritmo) — e os lembretes pessoais dela, pelo mesmo motivo.
+ * Tarefa particular de outra pessoa (dentro de um espaço) fica de fora — é
+ * dela, não do dono. Subtarefas também: o resumo é por tarefa.
  */
 export async function getOwnerDashboard(): Promise<OwnerDashboardData> {
   const user = await requireUser();
   const supabase = await createClient();
+  const semanaPassada = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data: espacos } = await supabase
-    .from("workspaces")
-    .select("id, name, color")
-    .eq("owner_id", user.id)
-    .order("name");
+  const [{ data: espacos }, lembretes] = await Promise.all([
+    supabase.from("workspaces").select("id, name, color").eq("owner_id", user.id).order("name"),
+    listPersonalReminders(user.id),
+  ]);
   const workspaces = espacos ?? [];
-  if (workspaces.length === 0) return { workspaces, tasks: [], people: [] };
+
+  // Mesmo recorte das tarefas de espaço: aberto, ou concluído há no máximo 7
+  // dias — sem isso, um lembrete concluído há meses inflaria "Concluídas".
+  const tarefasLembrete = lembretes
+    .filter((l) => !l.is_completed || (l.completed_at ?? "") >= semanaPassada)
+    .map((l) => adaptarLembrete(l, user.id));
+
+  if (workspaces.length === 0) {
+    return { workspaces, tasks: tarefasLembrete, people: [] };
+  }
 
   const ids = workspaces.map((w) => w.id);
-  const semanaPassada = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const [{ data: tarefas }, { data: equipe }] = await Promise.all([
     supabase
@@ -1100,7 +1114,10 @@ export async function getOwnerDashboard(): Promise<OwnerDashboardData> {
 
   return {
     workspaces,
-    tasks: (tarefas ?? []) as TaskOverview[],
+    tasks: [
+      ...((tarefas ?? []) as TaskOverview[]).map(adaptarTarefaDeEspaco),
+      ...tarefasLembrete,
+    ],
     people: ((perfis ?? []) as PersonRef[]).sort((a, b) =>
       (a.full_name ?? "").localeCompare(b.full_name ?? "", "pt-BR"),
     ),

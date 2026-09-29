@@ -39,7 +39,12 @@ export default async function OwnerDashboardPage() {
   const hoje = todayISO();
   const agora = new Date();
   const { tasks, people } = dados;
-  const espacoPorId = new Map(dados.workspaces.map((w) => [w.id, w]));
+  // "" é o lembrete pessoal (sem espaço — ver lib/unified-tasks.ts); a chave
+  // vazia entra aqui pra `DashboardTaskRow` ter nome e cor pra mostrar.
+  const espacoPorId = new Map<string, { id: string; name: string; color: string }>([
+    ["", { id: "", name: "Pessoal", color: "slate" }],
+    ...dados.workspaces.map((w): [string, typeof w] => [w.id, w]),
+  ]);
   const pessoaPorId = new Map(people.map((p) => [p.id, p]));
 
   const atrasada = (t: TaskOverview) => isOverdueNow(t, agora);
@@ -62,7 +67,7 @@ export default async function OwnerDashboardPage() {
     { label: "Concluídas em 7 dias", valor: concluidas7.length, icon: CheckCircle2, tom: "text-emerald-600 bg-emerald-50", filtro: "concluidas" },
   ];
 
-  const porEspaco = dados.workspaces.map((w) => {
+  function linhaDoGrupo(w: { id: string; name: string; color: string }) {
     const doEspaco = tasks.filter((t) => t.workspace_id === w.id);
     const abertasW = doEspaco.filter((t) => !t.is_completed);
     const concluidasW = doEspaco.filter((t) => t.is_completed).length;
@@ -78,7 +83,14 @@ export default async function OwnerDashboardPage() {
           ? Math.round((concluidasW / (abertasW.length + concluidasW)) * 100)
           : 0,
     };
-  });
+  }
+
+  const linhaPessoal = linhaDoGrupo({ id: "", name: "Pessoal (lembretes)", color: "slate" });
+  const porEspaco = [
+    ...dados.workspaces.map(linhaDoGrupo),
+    // Só entra se houver algo — sem lembrete nenhum, a linha seria só ruído.
+    ...(linhaPessoal.abertas + linhaPessoal.concluidas > 0 ? [linhaPessoal] : []),
+  ];
 
   const porPessoa = people
     .map((p) => ({
@@ -163,7 +175,10 @@ export default async function OwnerDashboardPage() {
                 {porEspaco.map((w) => (
                   <tr key={w.id} className="hover:bg-ink-50">
                     <td className="px-5 py-2.5">
-                      <Link href={`/e/${w.id}`} className="flex items-center gap-2 font-medium text-ink-800 hover:text-brand-600">
+                      <Link
+                        href={w.id ? `/e/${w.id}` : "/minhas-tarefas"}
+                        className="flex items-center gap-2 font-medium text-ink-800 hover:text-brand-600"
+                      >
                         <span className={cn("size-2 rounded-full", accentClass(w.color))} />
                         {w.name}
                       </Link>

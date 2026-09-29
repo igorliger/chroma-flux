@@ -71,8 +71,11 @@ export function DashboardTaskRow({
 }) {
   return (
     <li>
+      {/* Lembrete pessoal (sem espaço, `workspace_id` vazio — ver
+          `lib/unified-tasks.ts`) abre em "Minhas tarefas", não numa tela de
+          espaço que não existe. */}
       <Link
-        href={`/e/${t.workspace_id}/tarefas`}
+        href={t.workspace_id ? `/e/${t.workspace_id}/tarefas` : "/minhas-tarefas"}
         className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-ink-50"
       >
         <div className="min-w-0 flex-1">

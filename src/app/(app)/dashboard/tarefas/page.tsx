@@ -53,7 +53,11 @@ export default async function DashboardTasksPage({
   const hoje = todayISO();
   const agora = new Date();
   const { tasks, people } = dados;
-  const espacoPorId = new Map(dados.workspaces.map((w) => [w.id, w]));
+  // "" é o lembrete pessoal (sem espaço — ver lib/unified-tasks.ts).
+  const espacoPorId = new Map<string, { id: string; name: string; color: string }>([
+    ["", { id: "", name: "Pessoal", color: "slate" }],
+    ...dados.workspaces.map((w): [string, typeof w] => [w.id, w]),
+  ]);
   const pessoaPorId = new Map(people.map((p) => [p.id, p]));
 
   const abertas = tasks.filter((t) => !t.is_completed);
@@ -91,7 +95,8 @@ export default async function DashboardTasksPage({
         <header className="mb-6 mt-3">
           <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{titulo}</h1>
           <p className="mt-1 text-sm text-ink-500">
-            {lista.length} {lista.length === 1 ? "tarefa" : "tarefas"}, em todos os seus espaços.
+            {lista.length} {lista.length === 1 ? "tarefa" : "tarefas"}, em todos os seus espaços e
+            nos seus lembretes pessoais.
           </p>
         </header>
 
