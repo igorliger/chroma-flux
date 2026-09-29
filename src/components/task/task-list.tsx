@@ -8,6 +8,7 @@ import {
   Lock,
   MessageSquare,
   Repeat,
+  Text,
 } from "lucide-react";
 
 import { Avatar, EmptyState } from "@/components/ui";
@@ -140,6 +141,9 @@ export function TaskList({
                 </div>
 
                 <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-ink-500">
+                  {task.description.trim().length > 0 && (
+                    <Text className="size-3.5 shrink-0" aria-label="Tem descrição" />
+                  )}
                   {shortRecurrenceLabel(recurrenceFromTask(task)) && (
                     <span className="inline-flex items-center gap-1 font-medium text-brand-600">
                       <Repeat className="size-3.5" aria-hidden />
