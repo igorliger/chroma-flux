@@ -142,7 +142,10 @@ export function TaskList({
 
                 <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-ink-500">
                   {task.description.trim().length > 0 && (
-                    <Text className="size-3.5 shrink-0" aria-label="Tem descrição" />
+                    <span className="inline-flex items-center gap-1 font-medium text-brand-600">
+                      <Text className="size-3.5" aria-hidden />
+                      Contém descrição
+                    </span>
                   )}
                   {shortRecurrenceLabel(recurrenceFromTask(task)) && (
                     <span className="inline-flex items-center gap-1 font-medium text-brand-600">
