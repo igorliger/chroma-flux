@@ -45,6 +45,7 @@ export function SidebarShell({
   grupos,
   user,
   signOut,
+  visual,
   children,
 }: {
   titulo: string;
@@ -63,6 +64,11 @@ export function SidebarShell({
   grupos: { rotulo?: string; itens: NavItem[]; vazio?: string }[];
   user: { id: string; name: string; email: string; papel?: string };
   signOut: () => Promise<void>;
+  /**
+   * Paleta da tela. `"flux"` liga o azul profundo com roxo de destaque
+   * (tokens em `globals.css`); sem ele, a casca segue a paleta padrão.
+   */
+  visual?: "flux";
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -159,7 +165,7 @@ export function SidebarShell({
                           className={cn(
                             "flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                             selecionado
-                              ? "bg-sidebar-active font-medium text-sidebar-fg"
+                              ? "bg-sidebar-active font-medium text-sidebar-active-fg"
                               : "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-fg",
                           )}
                         >
@@ -206,7 +212,7 @@ export function SidebarShell({
                                   className={cn(
                                     "flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
                                     pathname === filho.href
-                                      ? "bg-sidebar-active font-medium text-sidebar-fg"
+                                      ? "bg-sidebar-active font-medium text-sidebar-active-fg"
                                       : "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-fg",
                                   )}
                                 >
@@ -236,7 +242,7 @@ export function SidebarShell({
             className={cn(
               "mb-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
               pathname === acaoRodape.href
-                ? "bg-sidebar-active font-medium text-sidebar-fg"
+                ? "bg-sidebar-active font-medium text-sidebar-active-fg"
                 : "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-fg",
             )}
           >
@@ -274,7 +280,7 @@ export function SidebarShell({
   );
 
   return (
-    <div className="flex min-h-screen">
+    <div className={cn("flex min-h-screen", visual && "flux-backdrop")} data-visual={visual}>
       {/* Uma vez para toda a casca autenticada: qualquer tela que conclua uma
           tarefa dispara `fireCompletionBurst()`, e é aqui que ela aparece. */}
       <CompletionBurst />

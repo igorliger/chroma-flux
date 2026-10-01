@@ -26,11 +26,13 @@ export function WorkspacesShell({
   workspaces,
   user,
   signOut,
+  visual,
   children,
 }: {
   workspaces: { id: string; name: string; color: string; role: WorkspaceRole }[];
   user: { id: string; name: string; email: string };
   signOut: () => Promise<void>;
+  visual?: "flux";
   children: React.ReactNode;
 }) {
   const itens: NavItem[] = workspaces.map((w) => {
@@ -91,6 +93,7 @@ export function WorkspacesShell({
       }}
       user={user}
       signOut={signOut}
+      visual={visual}
     >
       {children}
     </SidebarShell>
