@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { Avatar, EmptyState } from "@/components/ui";
+import { AttachmentBadges } from "@/components/task/attachment-badges";
 import { recurrenceFromTask, shortRecurrenceLabel } from "@/lib/recurrence";
 import { useNow } from "@/lib/use-now";
 import { cn, dueDateMeta, isSharedTask, priorityMeta, responsibleIds } from "@/lib/utils";
@@ -165,6 +166,7 @@ export function TaskList({
                       {task.comment_count}
                     </span>
                   )}
+                  <AttachmentBadges total={task.attachment_count} images={task.image_count} />
                 </div>
               </div>
 

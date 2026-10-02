@@ -20,6 +20,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { AttachmentBadges } from "@/components/task/attachment-badges";
 import { isSafeHttpUrl } from "@/lib/links";
 import { recurrenceFromTask, shortRecurrenceLabel } from "@/lib/recurrence";
 import { useNow } from "@/lib/use-now";
@@ -253,6 +254,7 @@ function TaskRow({
               {task.comment_count}
             </span>
           )}
+          <AttachmentBadges total={task.attachment_count} images={task.image_count} />
           {isSharedTask(task) && (
             <span
               className="inline-flex items-center gap-1"
