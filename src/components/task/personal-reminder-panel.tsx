@@ -173,7 +173,7 @@ export function PersonalReminderPanel({
             className={cn(
               "inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors",
               completed
-                ? "bg-emerald-50 text-emerald-700"
+                ? "bg-ok-bg text-ok-fg"
                 : "bg-ink-100 text-ink-600 hover:bg-ink-200",
             )}
           >
@@ -191,7 +191,7 @@ export function PersonalReminderPanel({
               <IconButton
                 label="Excluir lembrete"
                 type="submit"
-                className="hover:bg-rose-50 hover:text-rose-600"
+                className="hover:bg-danger-bg hover:text-danger-fg"
               >
                 <Trash2 className="size-4" />
               </IconButton>
@@ -204,7 +204,7 @@ export function PersonalReminderPanel({
 
         <div className="min-h-0 flex-1 overflow-y-auto scrollbar-slim px-4 py-4 sm:px-5">
           {error && (
-            <p role="alert" className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            <p role="alert" className="mb-4 rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger-fg">
               {error}
             </p>
           )}
@@ -346,7 +346,7 @@ export function PersonalReminderPanel({
                         <IconButton
                           label="Excluir subtarefa"
                           type="submit"
-                          className="size-7 opacity-0 group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600"
+                          className="size-7 opacity-0 group-hover:opacity-100 hover:bg-danger-bg hover:text-danger-fg"
                         >
                           <Trash2 className="size-3.5" />
                         </IconButton>

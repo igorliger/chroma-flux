@@ -56,7 +56,7 @@ export function TaskList({
   }
 
   return (
-    <ul className="divide-y divide-ink-100 overflow-hidden rounded-[--radius-card] border border-ink-200 bg-surface">
+    <ul className="divide-y divide-ink-100 overflow-hidden rounded-(--radius-card) border border-ink-200 bg-surface">
       {tasks.map((task) => {
         const responsaveis = responsibleIds(task)
           .map((id) => peopleById.get(id))

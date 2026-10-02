@@ -301,7 +301,7 @@ export function DueDateField({
             </p>
           )}
           {aviso && (
-            <p role="alert" className="text-xs text-amber-700">
+            <p role="alert" className="text-xs text-warn-fg">
               {aviso}
             </p>
           )}

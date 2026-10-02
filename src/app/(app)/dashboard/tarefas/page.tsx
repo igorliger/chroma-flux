@@ -93,14 +93,14 @@ export default async function DashboardTasksPage({
         </Link>
 
         <header className="mb-6 mt-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{titulo}</h1>
-          <p className="mt-1 text-sm text-ink-500">
+          <h1 className="text-[28px] font-bold leading-tight tracking-tight text-ink-900 sm:text-[34px]">{titulo}</h1>
+          <p className="mt-1.5 text-base text-ink-500">
             {lista.length} {lista.length === 1 ? "tarefa" : "tarefas"}, em todos os seus espaços e
             nos seus lembretes pessoais.
           </p>
         </header>
 
-        <section className="overflow-hidden rounded-[--radius-card] border border-ink-200 bg-surface shadow-sm">
+        <section className="overflow-hidden rounded-(--radius-card) border border-ink-200 bg-surface flux-shadow">
           {lista.length === 0 ? (
             <p className="px-5 py-10 text-center text-sm text-ink-500">{vazio}</p>
           ) : (

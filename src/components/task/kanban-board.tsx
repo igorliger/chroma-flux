@@ -214,7 +214,7 @@ export function KanbanBoard({
                 const ultima = doColuna[doColuna.length - 1];
                 void moverPara(taskId, coluna.value, ultima?.position, undefined);
               }}
-              className="flex min-h-40 flex-col rounded-[--radius-card] border border-ink-200 bg-ink-50/50 p-2"
+              className="flex min-h-40 flex-col rounded-(--radius-card) border border-ink-200 bg-ink-50/50 p-2"
             >
               <div className="mb-2 flex items-center justify-between px-1">
                 <h3 className="text-sm font-semibold text-ink-700">{coluna.label}</h3>

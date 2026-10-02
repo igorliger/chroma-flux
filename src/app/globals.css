@@ -18,6 +18,9 @@
    `ink`: ela é um painel com contraste próprio, mais escuro que o conteúdo no
    tema escuro e mais acinzentado que ele no claro.
 
+   Paleta (out/2026): azul profundo com roxo de destaque — fundo #0D1320,
+   barra #101827, painéis #182234, bordas #2A3E5C, roxo #7C5CFC.
+
    Os estados da barra (`hover`, `active`, `line`) também são tokens, e não
    `white/10` fixo como já foram: sobreposição de branco só clareia sobre fundo
    escuro — no tema claro ela some. Aqui o que troca é a cor da sobreposição,
@@ -25,203 +28,6 @@
    --------------------------------------------------------------------------- */
 
 :root {
-  --ink-50: oklch(0.98 0.003 285);
-  --ink-100: oklch(0.96 0.004 285);
-  --ink-200: oklch(0.92 0.006 285);
-  --ink-300: oklch(0.86 0.008 285);
-  --ink-400: oklch(0.68 0.012 285);
-  --ink-500: oklch(0.55 0.014 285);
-  --ink-600: oklch(0.45 0.016 285);
-  --ink-700: oklch(0.36 0.016 285);
-  --ink-800: oklch(0.27 0.014 285);
-  --ink-900: oklch(0.19 0.012 285);
-
-  --brand-50: oklch(0.97 0.014 285);
-  --brand-100: oklch(0.94 0.03 285);
-  --brand-200: oklch(0.89 0.055 285);
-  --brand-300: oklch(0.81 0.09 285);
-  --brand-400: oklch(0.71 0.14 285);
-  --brand-500: oklch(0.62 0.18 285);
-  --brand-600: oklch(0.54 0.2 285);
-  --brand-700: oklch(0.46 0.18 285);
-  --brand-800: oklch(0.39 0.15 285);
-  --brand-900: oklch(0.33 0.12 285);
-
-  /* Superfície de cartão, painel e campo. */
-  --surface: oklch(1 0 0);
-  --surface-raised: oklch(1 0 0);
-
-  /* Um degrau abaixo do fundo da página (`ink-50`), para a barra se distinguir
-     dele sem precisar de borda, e dos cartões, que são brancos. */
-  --sidebar: oklch(0.955 0.005 285);
-  --sidebar-fg: oklch(0.27 0.014 285);
-  --sidebar-muted: oklch(0.45 0.016 285);
-  --sidebar-hover: rgb(0 0 0 / 0.05);
-  --sidebar-active: rgb(0 0 0 / 0.09);
-  --sidebar-line: rgb(0 0 0 / 0.08);
-  /* Texto do item ativo da barra. Igual ao texto normal, exceto no visual
-     "flux", onde o item ativo é um bloco roxo e pede texto branco. */
-  --sidebar-active-fg: oklch(0.27 0.014 285);
-
-  /* Selos de estado — prioridade, prazo, atraso.
-     Precisam de token próprio: as paletas prontas do Tailwind não invertem, e
-     um `bg-rose-50` continuaria quase branco no tema escuro, virando um borrão
-     luminoso ao lado dos selos que escurecem corretamente. */
-  --danger-bg: oklch(0.95 0.03 15);
-  --danger-fg: oklch(0.52 0.2 17);
-  --warn-bg: oklch(0.96 0.04 80);
-  --warn-fg: oklch(0.52 0.13 65);
-  --info-bg: oklch(0.96 0.03 240);
-  --info-fg: oklch(0.52 0.15 245);
-  --ok-bg: oklch(0.95 0.04 155);
-  --ok-fg: oklch(0.48 0.13 155);
-}
-
-:root[data-theme="dark"] {
-  /* A escala inverte: 50 vira o fundo mais escuro, 900 o texto mais claro. */
-  --ink-50: oklch(0.17 0.01 285);
-  --ink-100: oklch(0.21 0.011 285);
-  --ink-200: oklch(0.27 0.012 285);
-  --ink-300: oklch(0.34 0.013 285);
-  --ink-400: oklch(0.5 0.014 285);
-  --ink-500: oklch(0.63 0.014 285);
-  --ink-600: oklch(0.73 0.012 285);
-  --ink-700: oklch(0.83 0.01 285);
-  --ink-800: oklch(0.91 0.007 285);
-  --ink-900: oklch(0.97 0.004 285);
-
-  /* O roxo precisa clarear no escuro: o tom claro some contra fundo escuro. */
-  --brand-50: oklch(0.26 0.05 285);
-  --brand-100: oklch(0.31 0.07 285);
-  --brand-200: oklch(0.37 0.1 285);
-  --brand-300: oklch(0.46 0.14 285);
-  --brand-400: oklch(0.58 0.17 285);
-  --brand-500: oklch(0.68 0.18 285);
-  --brand-600: oklch(0.62 0.19 285);
-  --brand-700: oklch(0.74 0.15 285);
-  --brand-800: oklch(0.82 0.11 285);
-  --brand-900: oklch(0.89 0.07 285);
-
-  --surface: oklch(0.22 0.011 285);
-  --surface-raised: oklch(0.25 0.012 285);
-
-  --sidebar: oklch(0.14 0.01 285);
-  --sidebar-fg: oklch(0.95 0.004 285);
-  --sidebar-muted: oklch(0.6 0.012 285);
-  --sidebar-hover: rgb(255 255 255 / 0.1);
-  --sidebar-active: rgb(255 255 255 / 0.15);
-  --sidebar-line: rgb(255 255 255 / 0.1);
-  --sidebar-active-fg: oklch(0.95 0.004 285);
-
-  /* Fundo escuro e saturado, texto claro: o mesmo significado, invertido. */
-  --danger-bg: oklch(0.29 0.09 15);
-  --danger-fg: oklch(0.8 0.14 17);
-  --warn-bg: oklch(0.3 0.07 75);
-  --warn-fg: oklch(0.83 0.13 80);
-  --info-bg: oklch(0.29 0.08 245);
-  --info-fg: oklch(0.8 0.12 240);
-  --ok-bg: oklch(0.28 0.07 155);
-  --ok-fg: oklch(0.79 0.13 155);
-}
-
-@theme {
-  --color-ink-50: var(--ink-50);
-  --color-ink-100: var(--ink-100);
-  --color-ink-200: var(--ink-200);
-  --color-ink-300: var(--ink-300);
-  --color-ink-400: var(--ink-400);
-  --color-ink-500: var(--ink-500);
-  --color-ink-600: var(--ink-600);
-  --color-ink-700: var(--ink-700);
-  --color-ink-800: var(--ink-800);
-  --color-ink-900: var(--ink-900);
-
-  --color-brand-50: var(--brand-50);
-  --color-brand-100: var(--brand-100);
-  --color-brand-200: var(--brand-200);
-  --color-brand-300: var(--brand-300);
-  --color-brand-400: var(--brand-400);
-  --color-brand-500: var(--brand-500);
-  --color-brand-600: var(--brand-600);
-  --color-brand-700: var(--brand-700);
-  --color-brand-800: var(--brand-800);
-  --color-brand-900: var(--brand-900);
-
-  --color-surface: var(--surface);
-  --color-surface-raised: var(--surface-raised);
-
-  --color-danger-bg: var(--danger-bg);
-  --color-danger-fg: var(--danger-fg);
-  --color-warn-bg: var(--warn-bg);
-  --color-warn-fg: var(--warn-fg);
-  --color-info-bg: var(--info-bg);
-  --color-info-fg: var(--info-fg);
-  --color-ok-bg: var(--ok-bg);
-  --color-ok-fg: var(--ok-fg);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-fg: var(--sidebar-fg);
-  --color-sidebar-muted: var(--sidebar-muted);
-  --color-sidebar-hover: var(--sidebar-hover);
-  --color-sidebar-active: var(--sidebar-active);
-  --color-sidebar-line: var(--sidebar-line);
-  --color-sidebar-active-fg: var(--sidebar-active-fg);
-
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-
-  --radius-card: 0.875rem;
-}
-
-/* ---------------------------------------------------------------------------
-   Visual "flux" — azul profundo com roxo de destaque.
-
-   Por enquanto vale só para as telas que pedem (`data-visual="flux"` na casca,
-   hoje "Minhas tarefas"); para estender ao app inteiro basta pôr o atributo
-   numa casca a mais, ou mover estes valores para `:root`.
-
-   O `@theme` do Tailwind resolve `--color-ink-50: var(--ink-50)` uma vez, no
-   `:root`, e os filhos herdam a cor já resolvida — trocar só `--ink-50` aqui
-   embaixo não mudaria nada. Por isso o escopo refaz as ligações `--color-*`.
-   --------------------------------------------------------------------------- */
-[data-visual="flux"] {
-  --color-ink-50: var(--ink-50);
-  --color-ink-100: var(--ink-100);
-  --color-ink-200: var(--ink-200);
-  --color-ink-300: var(--ink-300);
-  --color-ink-400: var(--ink-400);
-  --color-ink-500: var(--ink-500);
-  --color-ink-600: var(--ink-600);
-  --color-ink-700: var(--ink-700);
-  --color-ink-800: var(--ink-800);
-  --color-ink-900: var(--ink-900);
-  --color-brand-50: var(--brand-50);
-  --color-brand-100: var(--brand-100);
-  --color-brand-200: var(--brand-200);
-  --color-brand-300: var(--brand-300);
-  --color-brand-400: var(--brand-400);
-  --color-brand-500: var(--brand-500);
-  --color-brand-600: var(--brand-600);
-  --color-brand-700: var(--brand-700);
-  --color-brand-800: var(--brand-800);
-  --color-brand-900: var(--brand-900);
-  --color-surface: var(--surface);
-  --color-surface-raised: var(--surface-raised);
-  --color-danger-bg: var(--danger-bg);
-  --color-danger-fg: var(--danger-fg);
-  --color-warn-bg: var(--warn-bg);
-  --color-warn-fg: var(--warn-fg);
-  --color-info-bg: var(--info-bg);
-  --color-info-fg: var(--info-fg);
-  --color-ok-bg: var(--ok-bg);
-  --color-ok-fg: var(--ok-fg);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-fg: var(--sidebar-fg);
-  --color-sidebar-muted: var(--sidebar-muted);
-  --color-sidebar-hover: var(--sidebar-hover);
-  --color-sidebar-active: var(--sidebar-active);
-  --color-sidebar-line: var(--sidebar-line);
-  --color-sidebar-active-fg: var(--sidebar-active-fg);
-
   /* Claro: superfícies brancas sobre um fundo azul-acinzentado. */
   --ink-50: #f3f6fb;
   --ink-100: #eaf0f7;
@@ -270,7 +76,8 @@
   --flux-shadow: 0 1px 2px rgb(13 19 32 / 0.05), 0 8px 24px -12px rgb(13 19 32 / 0.12);
 }
 
-:root[data-theme="dark"] [data-visual="flux"] {
+:root[data-theme="dark"] {
+  /* A escala inverte: 50 vira o fundo mais escuro, 900 o texto mais claro. */
   /* Escuro: fundo #0D1320, barra #101827, painéis #182234, bordas #2A3E5C. */
   --ink-50: #0d1320;
   --ink-100: #1c2739;
@@ -317,6 +124,54 @@
   --flux-glow: rgb(59 99 235 / 0.22);
   --flux-glow-2: rgb(124 92 252 / 0.1);
   --flux-shadow: 0 1px 2px rgb(0 0 0 / 0.25), 0 12px 32px -16px rgb(0 0 0 / 0.55);
+}
+
+@theme {
+  --color-ink-50: var(--ink-50);
+  --color-ink-100: var(--ink-100);
+  --color-ink-200: var(--ink-200);
+  --color-ink-300: var(--ink-300);
+  --color-ink-400: var(--ink-400);
+  --color-ink-500: var(--ink-500);
+  --color-ink-600: var(--ink-600);
+  --color-ink-700: var(--ink-700);
+  --color-ink-800: var(--ink-800);
+  --color-ink-900: var(--ink-900);
+
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-fg: var(--danger-fg);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-fg: var(--warn-fg);
+  --color-info-bg: var(--info-bg);
+  --color-info-fg: var(--info-fg);
+  --color-ok-bg: var(--ok-bg);
+  --color-ok-fg: var(--ok-fg);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-fg: var(--sidebar-fg);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-line: var(--sidebar-line);
+  --color-sidebar-active-fg: var(--sidebar-active-fg);
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  --radius-card: 1rem;
 }
 
 /* Fundo da área de conteúdo: um brilho azul no alto, que some antes da lista

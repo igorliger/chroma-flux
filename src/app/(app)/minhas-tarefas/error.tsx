@@ -22,7 +22,7 @@ export default function ErroMinhasTarefas({
   }, [error]);
 
   return (
-    <div data-visual="flux" className="flux-backdrop flex min-h-screen items-center justify-center px-6">
+    <div className="flux-backdrop flex min-h-screen items-center justify-center px-6">
       <div role="alert" className="w-full max-w-md rounded-2xl border border-ink-200 bg-surface p-8 text-center flux-shadow">
         <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-xl bg-danger-bg text-danger-fg">
           <AlertTriangle className="size-6" aria-hidden />

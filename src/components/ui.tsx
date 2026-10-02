@@ -43,7 +43,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center rounded-lg font-medium transition-colors",
+        "inline-flex items-center justify-center rounded-xl font-medium transition-colors",
         "disabled:pointer-events-none disabled:opacity-50",
         VARIANTS[variant],
         SIZES[size],
@@ -96,7 +96,7 @@ export function IconButton({
 // Campos de formulário
 // ---------------------------------------------------------------------------
 const FIELD_BASE =
-  "w-full rounded-lg border border-ink-200 bg-surface px-3 text-sm text-ink-800 " +
+  "w-full rounded-xl border border-ink-200 bg-surface px-3 text-sm text-ink-800 " +
   "placeholder:text-ink-400 transition-colors focus:border-brand-400 " +
   "disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-400";
 
@@ -151,7 +151,7 @@ export function Field({
 export function FormError({ children }: { children?: React.ReactNode }) {
   if (!children) return null;
   return (
-    <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+    <p role="alert" className="rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger-fg">
       {children}
     </p>
   );
@@ -160,7 +160,7 @@ export function FormError({ children }: { children?: React.ReactNode }) {
 export function FormSuccess({ children }: { children?: React.ReactNode }) {
   if (!children) return null;
   return (
-    <p role="status" className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+    <p role="status" className="rounded-lg bg-ok-bg px-3 py-2 text-sm text-ok-fg">
       {children}
     </p>
   );
@@ -233,7 +233,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-[--radius-card] border border-ink-200 bg-surface p-5 shadow-sm",
+        "rounded-(--radius-card) border border-ink-200 bg-surface p-5 flux-shadow",
         className,
       )}
     >
@@ -254,7 +254,7 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-[--radius-card] border border-dashed border-ink-300 bg-white/60 px-6 py-12 text-center">
+    <div className="flex flex-col items-center justify-center rounded-(--radius-card) border border-dashed border-ink-300 bg-surface/60 px-6 py-12 text-center">
       {icon && <div className="mb-3 text-ink-400">{icon}</div>}
       <h3 className="text-base font-semibold text-ink-800">{title}</h3>
       {description && <p className="mt-1 max-w-sm text-sm text-ink-500">{description}</p>}

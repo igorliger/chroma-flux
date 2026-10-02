@@ -53,7 +53,7 @@ export function CustomFieldsForm({
                 <IconButton
                   label="Excluir campo"
                   type="submit"
-                  className="opacity-0 group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600"
+                  className="opacity-0 group-hover:opacity-100 hover:bg-danger-bg hover:text-danger-fg"
                 >
                   <Trash2 className="size-4" />
                 </IconButton>

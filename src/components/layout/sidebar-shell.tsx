@@ -45,7 +45,6 @@ export function SidebarShell({
   grupos,
   user,
   signOut,
-  visual,
   children,
 }: {
   titulo: string;
@@ -64,11 +63,6 @@ export function SidebarShell({
   grupos: { rotulo?: string; itens: NavItem[]; vazio?: string }[];
   user: { id: string; name: string; email: string; papel?: string };
   signOut: () => Promise<void>;
-  /**
-   * Paleta da tela. `"flux"` liga o azul profundo com roxo de destaque
-   * (tokens em `globals.css`); sem ele, a casca segue a paleta padrão.
-   */
-  visual?: "flux";
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -280,7 +274,7 @@ export function SidebarShell({
   );
 
   return (
-    <div className={cn("flex min-h-screen", visual && "flux-backdrop")} data-visual={visual}>
+    <div className="flux-backdrop flex min-h-screen">
       {/* Uma vez para toda a casca autenticada: qualquer tela que conclua uma
           tarefa dispara `fireCompletionBurst()`, e é aqui que ela aparece. */}
       <CompletionBurst />

@@ -313,7 +313,7 @@ export function TaskPanel({
             className={cn(
               "inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors",
               completed
-                ? "bg-emerald-50 text-emerald-700"
+                ? "bg-ok-bg text-ok-fg"
                 : "bg-ink-100 text-ink-600 hover:bg-ink-200",
               !permissoes.complete && "cursor-default opacity-70",
             )}
@@ -344,7 +344,7 @@ export function TaskPanel({
                 <IconButton
                   label="Excluir tarefa"
                   type="submit"
-                  className="hover:bg-rose-50 hover:text-rose-600"
+                  className="hover:bg-danger-bg hover:text-danger-fg"
                 >
                   <Trash2 className="size-4" />
                 </IconButton>
@@ -367,7 +367,7 @@ export function TaskPanel({
               const pessoa = peopleById.get(id);
               const feito = task.is_completed || (task.completed_by_ids ?? []).includes(id);
               return (
-                <span key={id} className={cn("inline-flex items-center gap-1", feito ? "text-emerald-700" : "text-ink-500")}>
+                <span key={id} className={cn("inline-flex items-center gap-1", feito ? "text-ok-fg" : "text-ink-500")}>
                   {feito ? (
                     <CheckCircle2 className="size-3.5" aria-hidden />
                   ) : (
@@ -394,7 +394,7 @@ export function TaskPanel({
 
         <div className="min-h-0 flex-1 overflow-y-auto scrollbar-slim px-4 py-4 sm:px-5">
           {error && (
-            <p role="alert" className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            <p role="alert" className="mb-4 rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger-fg">
               {error}
             </p>
           )}
@@ -541,14 +541,14 @@ export function TaskPanel({
                       {dep.title}
                     </span>
                     {!dep.is_completed && (
-                      <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                      <span className="shrink-0 rounded-full bg-warn-bg px-2 py-0.5 text-[11px] font-medium text-warn-fg">
                         Bloqueando
                       </span>
                     )}
                     {permissoes.edit && (
                       <IconButton
                         label="Remover dependência"
-                        className="size-7 opacity-0 group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600"
+                        className="size-7 opacity-0 group-hover:opacity-100 hover:bg-danger-bg hover:text-danger-fg"
                         onClick={async () => {
                           setDependsOn((prev) => prev.filter((d) => d.id !== dep.id));
                           const result = await removeDependencyAction(
@@ -713,7 +713,7 @@ export function TaskPanel({
                           <IconButton
                             label="Excluir subtarefa"
                             type="submit"
-                            className="size-7 opacity-0 group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600"
+                            className="size-7 opacity-0 group-hover:opacity-100 hover:bg-danger-bg hover:text-danger-fg"
                           >
                             <Trash2 className="size-3.5" />
                           </IconButton>

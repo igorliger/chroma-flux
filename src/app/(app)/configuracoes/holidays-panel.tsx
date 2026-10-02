@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils";
 
 const ESCOPO: Record<Holiday["scope"], { label: string; tom: string }> = {
   nacional: { label: "Nacional", tom: "bg-brand-50 text-brand-700" },
-  estadual: { label: "Estadual", tom: "bg-amber-50 text-amber-700" },
-  municipal: { label: "Municipal", tom: "bg-emerald-50 text-emerald-700" },
+  estadual: { label: "Estadual", tom: "bg-warn-bg text-warn-fg" },
+  municipal: { label: "Municipal", tom: "bg-ok-bg text-ok-fg" },
   empresa: { label: "Empresa", tom: "bg-ink-100 text-ink-700" },
 };
 

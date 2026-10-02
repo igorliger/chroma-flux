@@ -4,7 +4,7 @@
  */
 export default function Carregando() {
   return (
-    <div data-visual="flux" className="flux-backdrop flex min-h-screen" aria-busy="true">
+    <div className="flux-backdrop flex min-h-screen" aria-busy="true">
       <div className="hidden w-64 shrink-0 bg-sidebar lg:block" aria-hidden />
       <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
         <p role="status" className="sr-only">

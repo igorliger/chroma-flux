@@ -47,8 +47,8 @@ export default async function QuadroPage({
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Quadro</h1>
-        <p className="mt-1 text-sm text-ink-500">
+        <h1 className="text-[28px] font-bold leading-tight tracking-tight text-ink-900 sm:text-[34px]">Quadro</h1>
+        <p className="mt-1.5 text-base text-ink-500">
           Arraste as tarefas entre as colunas para atualizar o andamento.
         </p>
       </div>

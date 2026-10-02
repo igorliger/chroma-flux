@@ -30,8 +30,8 @@ export default async function SettingsPage({
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Configurações</h1>
-        <p className="mt-1 text-sm text-ink-500">
+        <h1 className="text-[28px] font-bold leading-tight tracking-tight text-ink-900 sm:text-[34px]">Configurações</h1>
+        <p className="mt-1.5 text-base text-ink-500">
           Dados do espaço de trabalho e do seu perfil.
         </p>
       </header>
@@ -66,7 +66,7 @@ export default async function SettingsPage({
 
       {role === "owner" && (
         <Card className="mt-6 border-rose-200">
-          <h2 className="font-semibold text-rose-700">Zona de risco</h2>
+          <h2 className="font-semibold text-danger-fg">Zona de risco</h2>
           <p className="mb-4 mt-1 text-sm text-ink-500">
             Excluir o espaço apaga permanentemente todas as tarefas, colunas e
             comentários dele. Não há como desfazer.

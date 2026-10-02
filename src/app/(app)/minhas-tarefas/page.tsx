@@ -70,7 +70,7 @@ export default async function MyTasksPage() {
   };
 
   return (
-    <WorkspacesShell {...shellProps} visual="flux">
+    <WorkspacesShell {...shellProps}>
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
         <MyTasksBrowser tasks={tarefas} currentUserId={user.id} perfil={perfilPessoa} spaces={spaces} />
       </div>

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LayoutGrid, ListTodo, Users } from "lucide-react";
+import { ArrowRight, LayoutGrid, ListTodo, Users } from "lucide-react";
 
 import { signOutAction } from "@/app/actions/auth";
 import { acceptInvitationAction } from "@/app/actions/workspaces";
@@ -59,10 +59,10 @@ export default async function WorkspacesPage({
       <main className="mx-auto max-w-5xl px-6 py-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
+            <h1 className="text-[28px] font-bold leading-tight tracking-tight text-ink-900 sm:text-[34px]">
               Seus espaços de trabalho
             </h1>
-            <p className="mt-1 text-sm text-ink-500">
+            <p className="mt-1.5 text-base text-ink-500">
               Os dados de cada espaço ficam isolados dos demais.
             </p>
           </div>
@@ -125,22 +125,27 @@ export default async function WorkspacesPage({
                     // Painel continua existindo, só não é mais a porta de
                     // entrada (o menu lateral leva a ele quando quiser).
                     href={`/e/${workspace.id}/tarefas`}
-                    className="group block h-full rounded-[--radius-card] border border-ink-200 bg-surface p-5 shadow-sm transition-shadow hover:shadow-md"
+                    className="group relative flex h-full flex-col overflow-hidden rounded-(--radius-card) border border-ink-200 bg-surface p-5 flux-shadow transition-colors hover:border-ink-300 hover:bg-surface-raised"
                   >
+                    {/* Faixa na cor do espaço, como nos cartões do painel. */}
+                    <span
+                      className={`absolute inset-x-0 top-0 h-[3px] ${accentClass(workspace.color)}`}
+                      aria-hidden
+                    />
                     <div className="flex items-start justify-between gap-3">
                       <span
-                        className={`flex size-10 items-center justify-center rounded-xl text-white ${accentClass(
+                        className={`flex size-12 items-center justify-center rounded-xl text-white ${accentClass(
                           workspace.color,
                         )}`}
                       >
-                        <LayoutGrid className="size-5" aria-hidden />
+                        <LayoutGrid className="size-6" aria-hidden />
                       </span>
-                      <span className="rounded-full bg-ink-100 px-2 py-0.5 text-xs font-medium text-ink-600">
+                      <span className="rounded-full border border-ink-200 px-2.5 py-1 text-xs font-medium text-ink-700">
                         {roleLabel(workspace.role)}
                       </span>
                     </div>
 
-                    <h3 className="mt-4 font-semibold text-ink-900 group-hover:text-brand-700">
+                    <h3 className="mt-4 text-lg font-bold text-ink-900 group-hover:text-brand-700">
                       {workspace.name}
                     </h3>
                     {workspace.description && (
@@ -149,7 +154,7 @@ export default async function WorkspacesPage({
                       </p>
                     )}
 
-                    <div className="mt-4 flex items-center gap-4 text-xs text-ink-500">
+                    <div className="mb-4 mt-3 flex items-center gap-4 text-sm text-ink-500">
                       <span className="inline-flex items-center gap-1">
                         <ListTodo className="size-3.5" aria-hidden />
                         {workspace.task_count}{" "}
@@ -161,6 +166,14 @@ export default async function WorkspacesPage({
                         {workspace.member_count === 1 ? "membro" : "membros"}
                       </span>
                     </div>
+
+                    <span className="mt-auto flex items-center justify-end gap-1 border-t border-ink-200/70 pt-3 text-sm font-medium text-brand-700">
+                      Abrir espaço
+                      <ArrowRight
+                        className="size-4 transition-transform group-hover:translate-x-0.5"
+                        aria-hidden
+                      />
+                    </span>
                   </Link>
                 </li>
               ))}
