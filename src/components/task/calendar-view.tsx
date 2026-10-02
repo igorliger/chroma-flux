@@ -97,7 +97,7 @@ export function CalendarView({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[--radius-card] border border-ink-200">
+      <div className="overflow-hidden rounded-(--radius-card) border border-ink-200">
         <div className="grid grid-cols-7 border-b border-ink-200 bg-ink-50">
           {DIAS_SEMANA.map((d) => (
             <div

@@ -121,7 +121,7 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
           className={cn(
             "inline-flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1 text-xs transition-colors",
             montado && tema === value
-              ? "bg-sidebar-active font-medium text-sidebar-fg"
+              ? "bg-sidebar-active font-medium text-sidebar-active-fg"
               : "text-sidebar-muted hover:text-sidebar-fg",
           )}
         >

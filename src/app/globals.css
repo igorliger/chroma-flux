@@ -18,6 +18,9 @@
    `ink`: ela é um painel com contraste próprio, mais escuro que o conteúdo no
    tema escuro e mais acinzentado que ele no claro.
 
+   Paleta (out/2026): azul profundo com roxo de destaque — fundo #0D1320,
+   barra #101827, painéis #182234, bordas #2A3E5C, roxo #7C5CFC.
+
    Os estados da barra (`hover`, `active`, `line`) também são tokens, e não
    `white/10` fixo como já foram: sobreposição de branco só clareia sobre fundo
    escuro — no tema claro ela some. Aqui o que troca é a cor da sobreposição,
@@ -25,99 +28,102 @@
    --------------------------------------------------------------------------- */
 
 :root {
-  --ink-50: oklch(0.98 0.003 285);
-  --ink-100: oklch(0.96 0.004 285);
-  --ink-200: oklch(0.92 0.006 285);
-  --ink-300: oklch(0.86 0.008 285);
-  --ink-400: oklch(0.68 0.012 285);
-  --ink-500: oklch(0.55 0.014 285);
-  --ink-600: oklch(0.45 0.016 285);
-  --ink-700: oklch(0.36 0.016 285);
-  --ink-800: oklch(0.27 0.014 285);
-  --ink-900: oklch(0.19 0.012 285);
+  /* Claro: superfícies brancas sobre um fundo azul-acinzentado. */
+  --ink-50: #f3f6fb;
+  --ink-100: #eaf0f7;
+  --ink-200: #d8e1ee;
+  --ink-300: #bfcbdc;
+  --ink-400: #8493ab;
+  --ink-500: #56667f;
+  --ink-600: #435169;
+  --ink-700: #313d53;
+  --ink-800: #1d283b;
+  --ink-900: #0d1320;
 
-  --brand-50: oklch(0.97 0.014 285);
-  --brand-100: oklch(0.94 0.03 285);
-  --brand-200: oklch(0.89 0.055 285);
-  --brand-300: oklch(0.81 0.09 285);
-  --brand-400: oklch(0.71 0.14 285);
-  --brand-500: oklch(0.62 0.18 285);
-  --brand-600: oklch(0.54 0.2 285);
-  --brand-700: oklch(0.46 0.18 285);
-  --brand-800: oklch(0.39 0.15 285);
-  --brand-900: oklch(0.33 0.12 285);
+  --brand-50: #f1edff;
+  --brand-100: #e5ddff;
+  --brand-200: #cfc2ff;
+  --brand-300: #ae99fe;
+  --brand-400: #9478fd;
+  --brand-500: #8566fc;
+  --brand-600: #7c5cfc;
+  --brand-700: #5d3fe0;
+  --brand-800: #4a31b8;
+  --brand-900: #2e1f78;
 
-  /* Superfície de cartão, painel e campo. */
-  --surface: oklch(1 0 0);
-  --surface-raised: oklch(1 0 0);
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
 
-  /* Um degrau abaixo do fundo da página (`ink-50`), para a barra se distinguir
-     dele sem precisar de borda, e dos cartões, que são brancos. */
-  --sidebar: oklch(0.955 0.005 285);
-  --sidebar-fg: oklch(0.27 0.014 285);
-  --sidebar-muted: oklch(0.45 0.016 285);
-  --sidebar-hover: rgb(0 0 0 / 0.05);
-  --sidebar-active: rgb(0 0 0 / 0.09);
-  --sidebar-line: rgb(0 0 0 / 0.08);
+  --sidebar: #eef2f8;
+  --sidebar-fg: #1d283b;
+  --sidebar-muted: #56667f;
+  --sidebar-hover: rgb(13 19 32 / 0.05);
+  --sidebar-active: #7c5cfc;
+  --sidebar-active-fg: #ffffff;
+  --sidebar-line: rgb(13 19 32 / 0.08);
 
-  /* Selos de estado — prioridade, prazo, atraso.
-     Precisam de token próprio: as paletas prontas do Tailwind não invertem, e
-     um `bg-rose-50` continuaria quase branco no tema escuro, virando um borrão
-     luminoso ao lado dos selos que escurecem corretamente. */
-  --danger-bg: oklch(0.95 0.03 15);
-  --danger-fg: oklch(0.52 0.2 17);
-  --warn-bg: oklch(0.96 0.04 80);
-  --warn-fg: oklch(0.52 0.13 65);
-  --info-bg: oklch(0.96 0.03 240);
-  --info-fg: oklch(0.52 0.15 245);
-  --ok-bg: oklch(0.95 0.04 155);
-  --ok-fg: oklch(0.48 0.13 155);
+  --danger-bg: #fdecec;
+  --danger-fg: #c0362f;
+  --warn-bg: #fdf3dc;
+  --warn-fg: #946200;
+  --info-bg: #def6fb;
+  --info-fg: #0b7285;
+  --ok-bg: #dff6ec;
+  --ok-fg: #1b7a4d;
+
+  --flux-glow: rgb(124 92 252 / 0.08);
+  --flux-glow-2: rgb(56 132 255 / 0.07);
+  --flux-shadow: 0 1px 2px rgb(13 19 32 / 0.05), 0 8px 24px -12px rgb(13 19 32 / 0.12);
 }
 
 :root[data-theme="dark"] {
   /* A escala inverte: 50 vira o fundo mais escuro, 900 o texto mais claro. */
-  --ink-50: oklch(0.17 0.01 285);
-  --ink-100: oklch(0.21 0.011 285);
-  --ink-200: oklch(0.27 0.012 285);
-  --ink-300: oklch(0.34 0.013 285);
-  --ink-400: oklch(0.5 0.014 285);
-  --ink-500: oklch(0.63 0.014 285);
-  --ink-600: oklch(0.73 0.012 285);
-  --ink-700: oklch(0.83 0.01 285);
-  --ink-800: oklch(0.91 0.007 285);
-  --ink-900: oklch(0.97 0.004 285);
+  /* Escuro: fundo #0D1320, barra #101827, painéis #182234, bordas #2A3E5C. */
+  --ink-50: #0d1320;
+  --ink-100: #1c2739;
+  --ink-200: #2a3e5c;
+  --ink-300: #3a5072;
+  --ink-400: #71839f;
+  --ink-500: #a8b8d0;
+  --ink-600: #bccadd;
+  --ink-700: #d3dcea;
+  --ink-800: #e6ecf5;
+  --ink-900: #f4f7fc;
 
-  /* O roxo precisa clarear no escuro: o tom claro some contra fundo escuro. */
-  --brand-50: oklch(0.26 0.05 285);
-  --brand-100: oklch(0.31 0.07 285);
-  --brand-200: oklch(0.37 0.1 285);
-  --brand-300: oklch(0.46 0.14 285);
-  --brand-400: oklch(0.58 0.17 285);
-  --brand-500: oklch(0.68 0.18 285);
-  --brand-600: oklch(0.62 0.19 285);
-  --brand-700: oklch(0.74 0.15 285);
-  --brand-800: oklch(0.82 0.11 285);
-  --brand-900: oklch(0.89 0.07 285);
+  --brand-50: #1d1a3f;
+  --brand-100: #262054;
+  --brand-200: #3a2e7d;
+  --brand-300: #5641c2;
+  --brand-400: #6c50ee;
+  --brand-500: #8e74fd;
+  --brand-600: #7c5cfc;
+  --brand-700: #a08bff;
+  --brand-800: #c1b4ff;
+  --brand-900: #e2dbff;
 
-  --surface: oklch(0.22 0.011 285);
-  --surface-raised: oklch(0.25 0.012 285);
+  --surface: #182234;
+  --surface-raised: #1d2940;
 
-  --sidebar: oklch(0.14 0.01 285);
-  --sidebar-fg: oklch(0.95 0.004 285);
-  --sidebar-muted: oklch(0.6 0.012 285);
-  --sidebar-hover: rgb(255 255 255 / 0.1);
-  --sidebar-active: rgb(255 255 255 / 0.15);
-  --sidebar-line: rgb(255 255 255 / 0.1);
+  --sidebar: #101827;
+  --sidebar-fg: #f4f7fc;
+  --sidebar-muted: #a8b8d0;
+  --sidebar-hover: rgb(255 255 255 / 0.06);
+  --sidebar-active: #7c5cfc;
+  --sidebar-active-fg: #ffffff;
+  --sidebar-line: rgb(168 184 208 / 0.12);
 
-  /* Fundo escuro e saturado, texto claro: o mesmo significado, invertido. */
-  --danger-bg: oklch(0.29 0.09 15);
-  --danger-fg: oklch(0.8 0.14 17);
-  --warn-bg: oklch(0.3 0.07 75);
-  --warn-fg: oklch(0.83 0.13 80);
-  --info-bg: oklch(0.29 0.08 245);
-  --info-fg: oklch(0.8 0.12 240);
-  --ok-bg: oklch(0.28 0.07 155);
-  --ok-fg: oklch(0.79 0.13 155);
+  --danger-bg: rgb(248 113 113 / 0.14);
+  --danger-fg: #ff9e9e;
+  --warn-bg: rgb(251 191 36 / 0.14);
+  --warn-fg: #fcd36b;
+  --info-bg: rgb(34 211 238 / 0.13);
+  --info-fg: #67e3f5;
+  --ok-bg: rgb(52 211 153 / 0.14);
+  --ok-fg: #74e3b4;
+
+  --flux-glow: rgb(59 99 235 / 0.22);
+  --flux-glow-2: rgb(124 92 252 / 0.1);
+  --flux-shadow: 0 1px 2px rgb(0 0 0 / 0.25), 0 12px 32px -16px rgb(0 0 0 / 0.55);
 }
 
 @theme {
@@ -160,11 +166,26 @@
   --color-sidebar-hover: var(--sidebar-hover);
   --color-sidebar-active: var(--sidebar-active);
   --color-sidebar-line: var(--sidebar-line);
+  --color-sidebar-active-fg: var(--sidebar-active-fg);
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
 
-  --radius-card: 0.875rem;
+  --radius-card: 1rem;
+}
+
+/* Fundo da área de conteúdo: um brilho azul no alto, que some antes da lista
+   para não competir com a leitura. */
+.flux-backdrop {
+  background-color: var(--ink-50);
+  background-image:
+    radial-gradient(60rem 26rem at 70% -8rem, var(--flux-glow), transparent 70%),
+    radial-gradient(40rem 22rem at 0% -6rem, var(--flux-glow-2), transparent 70%);
+  background-repeat: no-repeat;
+}
+
+.flux-shadow {
+  box-shadow: var(--flux-shadow);
 }
 
 /* Cores de acento de projetos e espaços — iguais nos dois temas. */

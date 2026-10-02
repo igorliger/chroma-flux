@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+
+import { MetricCard } from "@/components/metric-card";
 import {
   AlertTriangle,
   CalendarClock,
   CheckCircle2,
-  ChevronRight,
   CircleDot,
 } from "lucide-react";
 
@@ -77,28 +78,28 @@ export default async function DashboardPage({
       label: "Em aberto",
       value: open.length,
       icon: CircleDot,
-      tone: "text-brand-600 bg-brand-50",
+      tone: "brand" as const,
       filtro: "situacao=abertas",
     },
     {
       label: "Atrasadas",
       value: overdue.length,
       icon: AlertTriangle,
-      tone: "text-rose-600 bg-rose-50",
+      tone: "danger" as const,
       filtro: "situacao=abertas&prazo=atrasadas",
     },
     {
       label: "Vencem em 7 dias",
       value: dueThisWeek.length,
       icon: CalendarClock,
-      tone: "text-amber-600 bg-amber-50",
+      tone: "warn" as const,
       filtro: "situacao=abertas&prazo=semana",
     },
     {
       label: "Concluídas",
       value: completed.length,
       icon: CheckCircle2,
-      tone: "text-emerald-600 bg-emerald-50",
+      tone: "ok" as const,
       filtro: "situacao=concluidas",
     },
   ];
@@ -133,50 +134,32 @@ export default async function DashboardPage({
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
+        <h1 className="text-[28px] font-bold leading-tight tracking-tight text-ink-900 sm:text-[34px]">
           Olá, {firstName}
         </h1>
-        <p className="mt-1 text-sm text-ink-500">
+        <p className="mt-1.5 text-base text-ink-500">
           Visão geral de {workspace.name}.
         </p>
       </header>
 
       {/* Métricas */}
       <section aria-label="Resumo" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {metrics.map(({ label, value, icon: Icon, tone, filtro }) => (
-          <Link
+        {metrics.map(({ label, value, icon, tone, filtro }) => (
+          <MetricCard
             key={label}
             href={`/e/${workspaceId}/tarefas?${filtro}`}
-            aria-label={`${label}: ${value}. Ver na lista de tarefas.`}
-            className={cn(
-              "group rounded-[--radius-card] border border-ink-200 bg-surface p-4 text-left shadow-sm",
-              "transition-colors hover:border-brand-300 hover:bg-ink-50",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400",
-            )}
-          >
-            <span
-              className={cn("inline-flex size-8 items-center justify-center rounded-lg", tone)}
-            >
-              <Icon className="size-4" aria-hidden />
-            </span>
-            <p className="mt-3 text-2xl font-semibold tabular-nums text-ink-900">{value}</p>
-            <p className="flex items-center gap-1 text-sm text-ink-500">
-              {label}
-              {/* A setinha só no hover: quatro flechas fixas competiriam com os
-                  números, que são o conteúdo do cartão. */}
-              <ChevronRight
-                className="size-3.5 opacity-0 transition-opacity group-hover:opacity-100"
-                aria-hidden
-              />
-            </p>
-          </Link>
+            label={label}
+            value={value}
+            icon={icon}
+            tone={tone}
+          />
         ))}
       </section>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         {/* Carga da equipe */}
         <section className="lg:col-span-2">
-          <div className="rounded-[--radius-card] border border-ink-200 bg-surface p-5 shadow-sm">
+          <div className="rounded-(--radius-card) border border-ink-200 bg-surface p-5 flux-shadow">
             <div className="flex items-baseline justify-between">
               <h2 className="font-semibold text-ink-900">Carga por pessoa</h2>
               <Link
@@ -240,7 +223,7 @@ export default async function DashboardPage({
 
         {/* Taxa de conclusão e equipe */}
         <section className="space-y-6">
-          <div className="rounded-[--radius-card] border border-ink-200 bg-surface p-5 shadow-sm">
+          <div className="rounded-(--radius-card) border border-ink-200 bg-surface p-5 flux-shadow">
             <h2 className="font-semibold text-ink-900">Taxa de conclusão</h2>
             <p className="mt-4 text-4xl font-semibold tabular-nums text-ink-900">
               {completionRate}
@@ -258,7 +241,7 @@ export default async function DashboardPage({
             </p>
           </div>
 
-          <div className="rounded-[--radius-card] border border-ink-200 bg-surface p-5 shadow-sm">
+          <div className="rounded-(--radius-card) border border-ink-200 bg-surface p-5 flux-shadow">
             <div className="flex items-baseline justify-between">
               <h2 className="font-semibold text-ink-900">Equipe</h2>
               {/* O atalho leva à tela de membros, que agora é de quem

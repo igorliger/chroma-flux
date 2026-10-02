@@ -71,15 +71,7 @@ export default async function MyTasksPage() {
 
   return (
     <WorkspacesShell {...shellProps}>
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Minhas tarefas</h1>
-          <p className="mt-1 text-sm text-ink-500">
-            Tudo que está sob sua responsabilidade — em todos os seus espaços e os seus lembretes
-            pessoais — num lugar só.
-          </p>
-        </div>
-
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
         <MyTasksBrowser tasks={tarefas} currentUserId={user.id} perfil={perfilPessoa} spaces={spaces} />
       </div>
     </WorkspacesShell>

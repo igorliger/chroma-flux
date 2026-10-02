@@ -112,7 +112,7 @@ function normalize(value: string) {
  * A filtragem acontece no cliente de propósito: o volume por espaço de
  * trabalho é pequeno, e assim os controles respondem sem ida ao servidor.
  */
-export function applyFilters(tasks: TaskOverview[], filters: TaskFilters) {
+export function applyFilters<T extends TaskOverview>(tasks: T[], filters: TaskFilters): T[] {
   const term = normalize(filters.search.trim());
 
   return tasks.filter((task) => {
@@ -174,7 +174,7 @@ const byPriority = (a: TaskOverview, b: TaskOverview) =>
  * prazo, tarefas sem prazo também — em qualquer sentido, "sem prazo" não é
  * nem o mais próximo nem o mais distante.
  */
-export function sortTasks(tasks: TaskOverview[], order: SortOrder = DEFAULT_SORT) {
+export function sortTasks<T extends TaskOverview>(tasks: T[], order: SortOrder = DEFAULT_SORT): T[] {
   return [...tasks].sort((a, b) => {
     if (a.is_completed !== b.is_completed) return a.is_completed ? 1 : -1;
 

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+
+import { MetricCard, type MetricTone } from "@/components/metric-card";
 import { notFound } from "next/navigation";
 import { differenceInCalendarDays, parseISO } from "date-fns";
 import { AlertTriangle, CalendarClock, CheckCircle2, CircleDot } from "lucide-react";
@@ -58,13 +60,13 @@ export default async function OwnerDashboardPage() {
     label: string;
     valor: number;
     icon: typeof CircleDot;
-    tom: string;
+    tom: MetricTone;
     filtro: DashboardFiltro;
   }[] = [
-    { label: "Em aberto", valor: abertas.length, icon: CircleDot, tom: "text-brand-600 bg-brand-50", filtro: "abertas" },
-    { label: "Atrasadas", valor: atrasadas.length, icon: AlertTriangle, tom: "text-rose-600 bg-rose-50", filtro: "atrasadas" },
-    { label: "Vencem hoje", valor: paraHoje.length, icon: CalendarClock, tom: "text-amber-600 bg-amber-50", filtro: "hoje" },
-    { label: "Concluídas em 7 dias", valor: concluidas7.length, icon: CheckCircle2, tom: "text-emerald-600 bg-emerald-50", filtro: "concluidas" },
+    { label: "Em aberto", valor: abertas.length, icon: CircleDot, tom: "brand", filtro: "abertas" },
+    { label: "Atrasadas", valor: atrasadas.length, icon: AlertTriangle, tom: "danger", filtro: "atrasadas" },
+    { label: "Vencem hoje", valor: paraHoje.length, icon: CalendarClock, tom: "warn", filtro: "hoje" },
+    { label: "Concluídas em 7 dias", valor: concluidas7.length, icon: CheckCircle2, tom: "ok", filtro: "concluidas" },
   ];
 
   function linhaDoGrupo(w: { id: string; name: string; color: string }) {
@@ -123,7 +125,7 @@ export default async function OwnerDashboardPage() {
     )
     .slice(0, 15);
 
-  const cartao = "rounded-[--radius-card] border border-ink-200 bg-surface shadow-sm";
+  const cartao = "rounded-(--radius-card) border border-ink-200 bg-surface flux-shadow";
 
   return (
     <WorkspacesShell
@@ -133,26 +135,23 @@ export default async function OwnerDashboardPage() {
     >
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <header className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Dashboard</h1>
-          <p className="mt-1 text-sm text-ink-500">
+          <h1 className="text-[28px] font-bold leading-tight tracking-tight text-ink-900 sm:text-[34px]">Dashboard</h1>
+          <p className="mt-1.5 text-base text-ink-500">
             Todas as tarefas dos seus {dados.workspaces.length} espaços de trabalho, num lugar só.
           </p>
         </header>
 
         {/* Números gerais — cada um leva pra lista completa da categoria. */}
         <section aria-label="Resumo" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {numeros.map(({ label, valor, icon: Icon, tom, filtro }) => (
-            <Link
+          {numeros.map(({ label, valor, icon, tom, filtro }) => (
+            <MetricCard
               key={label}
               href={`/dashboard/tarefas?filtro=${filtro}`}
-              className={cn(cartao, "block p-4 transition-colors hover:border-brand-300 hover:bg-ink-50")}
-            >
-              <span className={cn("inline-flex size-8 items-center justify-center rounded-lg", tom)}>
-                <Icon className="size-4" aria-hidden />
-              </span>
-              <p className="mt-3 text-2xl font-semibold tabular-nums text-ink-900">{valor}</p>
-              <p className="text-sm text-ink-500">{label}</p>
-            </Link>
+              label={label}
+              value={valor}
+              icon={icon}
+              tone={tom}
+            />
           ))}
         </section>
 
@@ -226,7 +225,7 @@ export default async function OwnerDashboardPage() {
                       </span>
                       <span className="shrink-0 text-xs tabular-nums text-ink-500">
                         {at > 0 && <span className="mr-2 font-semibold text-danger-fg">{at} atrasada{at > 1 ? "s" : ""}</span>}
-                        {a} em aberto · <span className="text-emerald-700">{c} feitas</span>
+                        {a} em aberto · <span className="text-ok-fg">{c} feitas</span>
                       </span>
                     </div>
                     <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-ink-100">

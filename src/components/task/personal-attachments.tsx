@@ -172,7 +172,7 @@ export function PersonalAttachments({
                 <IconButton
                   label={`Remover ${anexo.file_name}`}
                   onClick={() => remover(anexo)}
-                  className="size-7 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600"
+                  className="size-7 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-danger-bg hover:text-danger-fg"
                 >
                   <Trash2 className="size-3.5" />
                 </IconButton>

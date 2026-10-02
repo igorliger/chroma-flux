@@ -82,10 +82,10 @@ export default async function ConfiguracoesPage() {
     >
       <main className="mx-auto max-w-3xl px-6 py-10">
         <header className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
+          <h1 className="text-[28px] font-bold leading-tight tracking-tight text-ink-900 sm:text-[34px]">
             Configurações
           </h1>
-          <p className="mt-1 text-sm text-ink-500">
+          <p className="mt-1.5 text-base text-ink-500">
             Preferências da sua conta, válidas em todos os espaços de trabalho.
           </p>
         </header>

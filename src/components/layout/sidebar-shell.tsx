@@ -159,7 +159,7 @@ export function SidebarShell({
                           className={cn(
                             "flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                             selecionado
-                              ? "bg-sidebar-active font-medium text-sidebar-fg"
+                              ? "bg-sidebar-active font-medium text-sidebar-active-fg"
                               : "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-fg",
                           )}
                         >
@@ -206,7 +206,7 @@ export function SidebarShell({
                                   className={cn(
                                     "flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
                                     pathname === filho.href
-                                      ? "bg-sidebar-active font-medium text-sidebar-fg"
+                                      ? "bg-sidebar-active font-medium text-sidebar-active-fg"
                                       : "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-fg",
                                   )}
                                 >
@@ -236,7 +236,7 @@ export function SidebarShell({
             className={cn(
               "mb-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
               pathname === acaoRodape.href
-                ? "bg-sidebar-active font-medium text-sidebar-fg"
+                ? "bg-sidebar-active font-medium text-sidebar-active-fg"
                 : "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-fg",
             )}
           >
@@ -274,7 +274,7 @@ export function SidebarShell({
   );
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flux-backdrop flex min-h-screen">
       {/* Uma vez para toda a casca autenticada: qualquer tela que conclua uma
           tarefa dispara `fireCompletionBurst()`, e é aqui que ela aparece. */}
       <CompletionBurst />
