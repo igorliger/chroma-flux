@@ -1,6 +1,13 @@
-# Publica na VPS da Hostinger a cada push na main.
-# Enquanto os segredos VPS_HOST e VPS_SSH_KEY não existirem, só avisa e sai
-# (a Vercel continua publicando normalmente até a migração).
+# Publica na VPS da Hostinger a cada push na main (e pelo botão "Run workflow").
+#
+# Segredos (Settings > Secrets and variables > Actions):
+#   VPS_HOST    = IP da VPS
+#   VPS_SSH_KEY = chave privada de /home/flux/.ssh/github_actions — inteira
+#                 (com BEGIN/END) ou numa linha só, em base64:
+#                 sudo base64 -w0 /home/flux/.ssh/github_actions
+#
+# Na VPS, essa chave só consegue rodar `flux-deploy` (ver `command=` no
+# authorized_keys do usuário flux). Sem os dois segredos, só avisa e sai.
 name: Deploy VPS
 
 on:
@@ -22,12 +29,28 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
         run: |
-          if [ -z "$VPS_HOST" ] || [ -z "$VPS_SSH_KEY" ]; then
+          if [ -z "$VPS_HOST" ] && [ -z "$VPS_SSH_KEY" ]; then
             echo "VPS_HOST/VPS_SSH_KEY não configurados — nada a fazer."
             exit 0
           fi
+          if [ -z "$VPS_HOST" ] || [ -z "$VPS_SSH_KEY" ]; then
+            echo "::error::Falta um dos segredos: VPS_HOST e VPS_SSH_KEY precisam existir os dois."
+            exit 1
+          fi
+
           install -d -m 700 ~/.ssh
-          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/vps
+          # Aceita a chave inteira (tolerando \r e espaços no fim das linhas,
+          # comuns ao copiar de terminal no navegador) ou em base64 numa linha.
+          if printf '%s' "$VPS_SSH_KEY" | grep -q "BEGIN OPENSSH PRIVATE KEY"; then
+            printf '%s\n' "$VPS_SSH_KEY" | tr -d '\r' | sed 's/[[:space:]]*$//' > ~/.ssh/vps
+          else
+            printf '%s' "$VPS_SSH_KEY" | tr -d ' \r\n\t' | base64 -d > ~/.ssh/vps 2>/dev/null || true
+          fi
           chmod 600 ~/.ssh/vps
+          if ! ssh-keygen -y -f ~/.ssh/vps >/dev/null 2>&1; then
+            echo "::error::VPS_SSH_KEY não é uma chave válida. Gere de novo na VPS com: sudo base64 -w0 /home/flux/.ssh/github_actions"
+            exit 1
+          fi
+
           ssh -i ~/.ssh/vps -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=30 \
             "flux@$VPS_HOST" flux-deploy
