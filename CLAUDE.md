@@ -42,9 +42,19 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
   a cópia de deploy e é resetada a cada publicação).
 - Antes de commitar: `npm run typecheck` e `npx eslint <arquivos>`.
 - Commits pequenos, mensagem em português. Enviar: `git push origin HEAD:main`.
-- **Publicar**: `sudo -u flux flux-deploy` (baixa a main, `npm ci`, build numa
-  pasta nova, troca o link `current`, `pm2 reload`; se o site não responder,
-  volta sozinho para a versão anterior). Scripts em `deploy/`.
+- **Publicar é automático** (desde 02/10/2026): todo push/merge na `main`
+  dispara o GitHub Actions `Deploy VPS` (`.github/workflows/deploy-vps.yml`),
+  que entra por SSH como `flux` e roda `flux-deploy` (baixa a main, `npm ci`,
+  build numa pasta nova, troca o link `current`, `pm2 reload`; se o site não
+  responder, volta sozinho para a versão anterior). Ou seja: **mesclar na
+  main = publicar**. Na mão: `sudo -u flux flux-deploy` ou "Run workflow" na
+  aba Actions. Scripts em `deploy/`.
+  - Segredos do repositório: `VPS_HOST` (IP) e `VPS_SSH_KEY` (chave
+    `/home/flux/.ssh/github_actions` em base64 numa linha:
+    `sudo base64 -w0 /home/flux/.ssh/github_actions`). No `authorized_keys`
+    do flux essa chave está presa a `command="/usr/local/bin/flux-deploy",restrict`.
+  - O SSH tem `AllowUsers`; o flux foi liberado em
+    `/etc/ssh/sshd_config.d/60-flux-deploy.conf`.
 - Ver site: `sudo -u flux pm2 status` · logs: `sudo -u flux pm2 logs chroma-flux --lines 100`.
 - Trocar chave do Resend: `flux-resend` (pede a chave sem mostrar).
 - Variáveis `NEXT_PUBLIC_*` entram no build → mudou, tem que republicar.
@@ -111,7 +121,6 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
 
 ## Pendências conhecidas
 
-- Publicação automática a cada push (hoje é manual com `flux-deploy`).
 - Excluir o projeto Supabase da nuvem depois de 10/10/2026, se tudo continuar
   estável.
 - Opcional: marcar feriados na visão de calendário.
