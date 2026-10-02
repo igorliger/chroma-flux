@@ -61,7 +61,7 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
 
 ## Supabase
 
-- Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0028**). Cada
+- Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0032**). Cada
   migração nova também é **anexada em `supabase/schema.sql`** antes do marcador
   `13. VERIFICAÇÃO`. Tipos à mão em `src/lib/database.types.ts`.
 - Aplicar migração na VPS: `docker exec -i supabase-db psql -U postgres -d postgres

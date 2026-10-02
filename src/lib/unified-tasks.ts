@@ -52,6 +52,7 @@ export function adaptarLembrete(p: PersonalTaskOverview, donoId: string): Unifie
     subtask_count: p.subtask_count,
     subtask_done_count: p.subtask_done_count,
     comment_count: 0,
+    attachment_count: p.attachment_count ?? 0,
     completed_by_ids: [],
     origem: "lembrete",
     lembreteOriginal: p,

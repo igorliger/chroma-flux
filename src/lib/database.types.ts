@@ -617,6 +617,9 @@ export type Database = {
           comment_count: number;
           /** Responsáveis que já concluíram a sua parte (0025). */
           completed_by_ids: string[];
+          /** Anexos da tarefa, da descrição e dos comentários (0032).
+           *  Opcional: some se o site rodar antes da migração. */
+          attachment_count?: number;
         };
         Relationships: [];
       };
@@ -625,6 +628,8 @@ export type Database = {
         Row: PersonalTaskRow & {
           subtask_count: number;
           subtask_done_count: number;
+          /** Anexos do lembrete (0032). */
+          attachment_count?: number;
         };
         Relationships: [];
       };

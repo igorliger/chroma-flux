@@ -7,6 +7,7 @@ import {
   ListTree,
   Lock,
   MessageSquare,
+  Paperclip,
   Repeat,
   Text,
 } from "lucide-react";
@@ -163,6 +164,15 @@ export function TaskList({
                     <span className="inline-flex items-center gap-1">
                       <MessageSquare className="size-3.5" aria-hidden />
                       {task.comment_count}
+                    </span>
+                  )}
+                  {(task.attachment_count ?? 0) > 0 && (
+                    <span
+                      className="inline-flex items-center gap-1 font-medium text-info-fg"
+                      title={`${task.attachment_count} ${task.attachment_count === 1 ? "anexo" : "anexos"}`}
+                    >
+                      <Paperclip className="size-3.5" aria-hidden />
+                      Contém anexo
                     </span>
                   )}
                 </div>

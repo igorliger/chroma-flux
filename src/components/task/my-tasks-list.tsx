@@ -12,6 +12,7 @@ import {
   Lock,
   MessageSquare,
   MoreHorizontal,
+  Paperclip,
   Repeat,
   RotateCcw,
   SquareArrowOutUpRight,
@@ -251,6 +252,15 @@ function TaskRow({
               <MessageSquare className="size-3.5" aria-hidden />
               <span className="sr-only">Comentários: </span>
               {task.comment_count}
+            </span>
+          )}
+          {(task.attachment_count ?? 0) > 0 && (
+            <span
+              className="inline-flex items-center gap-1 font-medium text-info-fg"
+              title={`${task.attachment_count} ${task.attachment_count === 1 ? "anexo" : "anexos"}`}
+            >
+              <Paperclip className="size-3.5" aria-hidden />
+              Contém anexo
             </span>
           )}
           {isSharedTask(task) && (
