@@ -12,7 +12,6 @@ import {
   Lock,
   MessageSquare,
   MoreHorizontal,
-  Paperclip,
   Repeat,
   RotateCcw,
   SquareArrowOutUpRight,
@@ -21,6 +20,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { AttachmentBadges } from "@/components/task/attachment-badges";
 import { isSafeHttpUrl } from "@/lib/links";
 import { recurrenceFromTask, shortRecurrenceLabel } from "@/lib/recurrence";
 import { useNow } from "@/lib/use-now";
@@ -254,15 +254,7 @@ function TaskRow({
               {task.comment_count}
             </span>
           )}
-          {(task.attachment_count ?? 0) > 0 && (
-            <span
-              className="inline-flex items-center gap-1 font-medium text-info-fg"
-              title={`${task.attachment_count} ${task.attachment_count === 1 ? "anexo" : "anexos"}`}
-            >
-              <Paperclip className="size-3.5" aria-hidden />
-              Contém anexo
-            </span>
-          )}
+          <AttachmentBadges total={task.attachment_count} images={task.image_count} />
           {isSharedTask(task) && (
             <span
               className="inline-flex items-center gap-1"

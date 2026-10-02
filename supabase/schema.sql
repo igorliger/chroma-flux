@@ -4454,11 +4454,12 @@ end;
 $$;
 
 -- =============================================================================
--- 0032 — Contador de anexos nas listas ("Contém anexo")
+-- 0032 — Contadores de anexos nas listas ("Contém N anexos/imagens")
 -- =============================================================================
--- As duas views de lista ganham `attachment_count` no FIM (as colunas
--- existentes não mudam de lugar, como pede `create or replace view`). Conta
--- todos os anexos da tarefa — os da descrição e os dos comentários.
+-- As duas views de lista ganham `attachment_count` (todos os anexos) e
+-- `image_count` (só os de tipo image/*) no FIM — as colunas existentes não
+-- mudam de lugar, como pede `create or replace view`. Contam os anexos da
+-- descrição e os dos comentários.
 --
 -- `security_invoker = true` continua: a contagem respeita a RLS de quem
 -- consulta, então ninguém descobre anexos que não poderia ver.
@@ -4483,7 +4484,9 @@ select
     '{}'
   ) as completed_by_ids,
   t.assigned_to_all,
-  (select count(*) from public.attachments a where a.task_id = t.id)::integer as attachment_count
+  (select count(*) from public.attachments a where a.task_id = t.id)::integer as attachment_count,
+  (select count(*) from public.attachments a
+    where a.task_id = t.id and a.mime_type like 'image/%')::integer as image_count
 from public.tasks t;
 
 create or replace view public.personal_task_overview
@@ -4500,7 +4503,10 @@ select
     where s.parent_task_id = t.id and s.is_completed)::integer
     as subtask_done_count,
   (select count(*) from public.personal_task_attachments a where a.task_id = t.id)::integer
-    as attachment_count
+    as attachment_count,
+  (select count(*) from public.personal_task_attachments a
+    where a.task_id = t.id and a.mime_type like 'image/%')::integer
+    as image_count
 from public.personal_tasks t;
 
 -- =============================================================================

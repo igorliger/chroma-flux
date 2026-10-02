@@ -620,6 +620,8 @@ export type Database = {
           /** Anexos da tarefa, da descrição e dos comentários (0032).
            *  Opcional: some se o site rodar antes da migração. */
           attachment_count?: number;
+          /** Quantos desses anexos são imagens (image/*) (0032). */
+          image_count?: number;
         };
         Relationships: [];
       };
@@ -628,8 +630,9 @@ export type Database = {
         Row: PersonalTaskRow & {
           subtask_count: number;
           subtask_done_count: number;
-          /** Anexos do lembrete (0032). */
+          /** Anexos do lembrete e quantos são imagens (0032). */
           attachment_count?: number;
+          image_count?: number;
         };
         Relationships: [];
       };
