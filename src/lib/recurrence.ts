@@ -132,16 +132,46 @@ export function describeRecurrence(r: Recurrence): string | null {
   return base;
 }
 
-/** Rótulo curto para a linha da lista, onde o espaço é apertado. */
-export function shortRecurrenceLabel(r: Recurrence): string | null {
+/**
+ * Rótulo semanal curto: "toda quarta", "todo sábado", "toda segunda e quinta".
+ * Sem dias marcados, usa o dia da semana do prazo — é nele que a repetição
+ * semanal cai. Sem nenhum dos dois, fica o genérico "semanal".
+ */
+function rotuloSemanal(weekdays: number[], dueDate?: string | null): string {
+  let dias = [...new Set(weekdays)].sort((x, y) => x - y);
+  if (dias.length === 0 && dueDate) {
+    const [ano, mes, dia] = dueDate.split("-").map(Number);
+    if (ano && mes && dia) dias = [new Date(ano, mes - 1, dia).getDay()];
+  }
+  if (dias.length === 0) return "semanal";
+
+  const nomes = dias.map((d) => WEEKDAYS.find((w) => w.value === d)?.label).filter(Boolean) as string[];
+  const lista =
+    nomes.length === 1 ? nomes[0] : `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}`;
+  // Sábado e domingo são masculinos: "todo sábado", "todo domingo".
+  const todo = dias[0] === 0 || dias[0] === 6 ? "todo" : "toda";
+  return `${todo} ${lista}`;
+}
+
+/**
+ * Rótulo curto para a linha da lista, onde o espaço é apertado.
+ * `dueDate` serve para dizer o dia da semana de uma repetição semanal.
+ */
+export function shortRecurrenceLabel(r: Recurrence, dueDate?: string | null): string | null {
   if (r.type === "none") return null;
   const n = Math.max(1, r.interval);
+  const semanal = r.type === "weekly" || (r.type === "custom" && r.unit === "week");
+
+  if (semanal) {
+    if (n === 1) return rotuloSemanal(r.weekdays, dueDate);
+    // Quinzenal: como se fala no dia a dia, mesmo sendo 14 dias.
+    if (n === 2) return "a cada 15 dias";
+    return `a cada ${n} semanas`;
+  }
 
   switch (r.type) {
     case "daily":
       return n === 1 ? "diária" : `${n}/dias`;
-    case "weekly":
-      return n === 1 ? "semanal" : `${n}/sem`;
     case "monthly":
       return n === 1 ? "mensal" : `${n}/meses`;
     case "yearly":

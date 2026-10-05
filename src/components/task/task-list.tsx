@@ -148,10 +148,10 @@ export function TaskList({
                       Contém descrição
                     </span>
                   )}
-                  {shortRecurrenceLabel(recurrenceFromTask(task)) && (
+                  {shortRecurrenceLabel(recurrenceFromTask(task), task.due_date) && (
                     <span className="inline-flex items-center gap-1 font-medium text-brand-600">
                       <Repeat className="size-3.5" aria-hidden />
-                      {shortRecurrenceLabel(recurrenceFromTask(task))}
+                      {shortRecurrenceLabel(recurrenceFromTask(task), task.due_date)}
                     </span>
                   )}
                   {task.subtask_count > 0 && (

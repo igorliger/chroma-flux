@@ -151,7 +151,7 @@ function TaskRow({
     .filter((p): p is PersonRef => !!p);
   const due = dueDateMeta(task.due_date, task.is_completed, task.due_time, now);
   const atrasada = !!due?.overdue && !task.is_completed;
-  const recorrencia = shortRecurrenceLabel(recurrenceFromTask(task));
+  const recorrencia = shortRecurrenceLabel(recurrenceFromTask(task), task.due_date);
   const podeConcluir = can("complete") || can("edit");
   const concluidosPor = task.completed_by_ids ?? [];
 
