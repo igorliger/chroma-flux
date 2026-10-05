@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/queries";
 import { MAX_ATTACHMENT_BYTES } from "@/lib/attachments";
+import { chunk } from "@/lib/utils";
 import type { PersonalTaskUpdate } from "@/lib/database.types";
 
 /**
@@ -343,16 +344,23 @@ export async function bulkDeletePersonalTasksAction(
   const parsed = bulkSchema.safeParse({ taskIds });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
+  // Em lotes: muitos ids num endereço só estouram o proxy (ver `chunk`).
   const supabase = await createClient();
-  const { error, count } = await supabase
-    .from("personal_tasks")
-    .delete({ count: "exact" })
-    .in("id", parsed.data.taskIds);
-
-  if (error) return { error: friendlyError(error.code, error.message) };
+  let total = 0;
+  for (const lote of chunk(parsed.data.taskIds)) {
+    const { error, count } = await supabase
+      .from("personal_tasks")
+      .delete({ count: "exact" })
+      .in("id", lote);
+    if (error) {
+      revalidateReminders();
+      return { error: friendlyError(error.code, error.message) };
+    }
+    total += count ?? lote.length;
+  }
 
   revalidateReminders();
-  return { count: count ?? parsed.data.taskIds.length };
+  return { count: total };
 }
 
 // ---------------------------------------------------------------------------
@@ -452,13 +460,19 @@ export async function bulkCompletePersonalTasksAction(
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   const supabase = await createClient();
-  const { error, count } = await supabase
-    .from("personal_tasks")
-    .update({ is_completed: completed }, { count: "exact" })
-    .in("id", parsed.data.taskIds);
-
-  if (error) return { error: friendlyError(error.code, error.message) };
+  let total = 0;
+  for (const lote of chunk(parsed.data.taskIds)) {
+    const { error, count } = await supabase
+      .from("personal_tasks")
+      .update({ is_completed: completed }, { count: "exact" })
+      .in("id", lote);
+    if (error) {
+      revalidateReminders();
+      return { error: friendlyError(error.code, error.message) };
+    }
+    total += count ?? lote.length;
+  }
 
   revalidateReminders();
-  return { count: count ?? parsed.data.taskIds.length };
+  return { count: total };
 }

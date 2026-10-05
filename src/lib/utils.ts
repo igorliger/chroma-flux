@@ -9,6 +9,21 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Lotes para consultas com lista de ids no endereço (`.in("id", ...)`).
+ *
+ * O proxy na frente do Supabase recusa (502) endereços a partir de uns 3 mil
+ * caracteres — cerca de 40 uuids, contando o cabeçalho de login. Lotes de 20
+ * ficam longe disso.
+ */
+export const ID_BATCH = 20;
+
+export function chunk<T>(items: T[], size = ID_BATCH): T[][] {
+  const lotes: T[][] = [];
+  for (let i = 0; i < items.length; i += size) lotes.push(items.slice(i, i + size));
+  return lotes;
+}
+
 // ---------------------------------------------------------------------------
 // Prioridades
 // ---------------------------------------------------------------------------
