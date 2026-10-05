@@ -859,11 +859,13 @@ export async function listTaskDependencies(
   const info = new Map<string, TaskDependencyInfo>();
   if (taskIds.length === 0) return info;
 
+  // Só pelo espaço: pôr os ids das tarefas no endereço estourava o limite do
+  // proxy (502) em espaços com umas 40 tarefas. O recorte é feito abaixo, em
+  // memória — só entram pares em que as duas pontas estão na lista.
   const { data, error } = await supabase
     .from("task_dependencies")
     .select("*")
-    .eq("workspace_id", workspaceId)
-    .or(`task_id.in.(${taskIds.join(",")}),depends_on_task_id.in.(${taskIds.join(",")})`);
+    .eq("workspace_id", workspaceId);
 
   if (error) throw error;
 
@@ -912,17 +914,19 @@ export async function listCustomFieldValues(
   const porTarefa = new Map<string, Map<string, string>>();
   if (taskIds.length === 0) return porTarefa;
 
+  // Só pelo espaço, com o recorte em memória — mesmo motivo de
+  // `listTaskDependencies`: a lista de ids no endereço estourava o proxy.
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("custom_field_values")
     .select("*")
-    .eq("workspace_id", workspaceId)
-    .in("task_id", taskIds);
+    .eq("workspace_id", workspaceId);
 
   if (error) throw error;
 
+  const pedidas = new Set(taskIds);
   for (const row of (data ?? []) as CustomFieldValue[]) {
-    if (row.value === null) continue;
+    if (row.value === null || !pedidas.has(row.task_id)) continue;
     const doMapa = porTarefa.get(row.task_id) ?? new Map<string, string>();
     doMapa.set(row.field_id, row.value);
     porTarefa.set(row.task_id, doMapa);

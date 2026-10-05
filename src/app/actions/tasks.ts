@@ -7,7 +7,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/queries";
 import type { TaskBoardStatus, TaskUpdate } from "@/lib/database.types";
-import { isResponsible, isSharedTask } from "@/lib/utils";
+import { chunk, isResponsible, isSharedTask } from "@/lib/utils";
 
 export type ActionState = {
   error?: string;
@@ -614,16 +614,23 @@ export async function bulkDeleteTasksAction(
   const parsed = bulkSchema.safeParse({ workspaceId, taskIds });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
+  // Em lotes: muitos ids num endereço só estouram o proxy (ver `chunk`).
   const supabase = await createClient();
-  const { error, count } = await supabase
-    .from("tasks")
-    .delete({ count: "exact" })
-    .in("id", parsed.data.taskIds);
-
-  if (error) return { error: friendlyError(error.code, error.message) };
+  let total = 0;
+  for (const lote of chunk(parsed.data.taskIds)) {
+    const { error, count } = await supabase
+      .from("tasks")
+      .delete({ count: "exact" })
+      .in("id", lote);
+    if (error) {
+      revalidateTasks(workspaceId);
+      return { error: friendlyError(error.code, error.message) };
+    }
+    total += count ?? lote.length;
+  }
 
   revalidateTasks(workspaceId);
-  return { count: count ?? parsed.data.taskIds.length };
+  return { count: total };
 }
 
 /**
@@ -656,23 +663,29 @@ export async function bulkCompleteTasksAction(
   }
 
   const supabase = await createClient();
-  const { error, count } = await supabase
-    .from("tasks")
-    .update({ is_completed: completed, board_status: completed ? "done" : "doing" }, { count: "exact" })
-    .in("id", idsParaAtualizar);
-
-  if (error) return { error: friendlyError(error.code, error.message) };
+  let count = 0;
+  for (const lote of chunk(idsParaAtualizar)) {
+    const { error, count: doLote } = await supabase
+      .from("tasks")
+      .update({ is_completed: completed, board_status: completed ? "done" : "doing" }, { count: "exact" })
+      .in("id", lote);
+    if (error) {
+      revalidateTasks(workspaceId);
+      return { error: friendlyError(error.code, error.message) };
+    }
+    count += doLote ?? lote.length;
+  }
 
   revalidateTasks(workspaceId);
 
   const puladas = parsed.data.taskIds.length - idsParaAtualizar.length;
   if (puladas > 0) {
     return {
-      count: count ?? idsParaAtualizar.length,
+      count,
       error: `${puladas} tarefa(s) não foram concluídas por depender de outra pendente.`,
     };
   }
 
-  return { count: count ?? idsParaAtualizar.length };
+  return { count };
 }
 
