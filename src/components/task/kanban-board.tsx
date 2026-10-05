@@ -289,7 +289,7 @@ export function KanbanBoard({
                               Atrasado
                             </span>
                           )}
-                          {shortRecurrenceLabel(recurrenceFromTask(task)) && (
+                          {shortRecurrenceLabel(recurrenceFromTask(task), task.due_date) && (
                             <span className="inline-flex items-center gap-1 font-medium text-brand-600">
                               <Repeat className="size-3" aria-hidden />
                             </span>
