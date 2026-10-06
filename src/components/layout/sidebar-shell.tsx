@@ -288,7 +288,7 @@ export function SidebarShell({
       {mobileAberto && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div
-            className="absolute inset-0 bg-ink-900/50"
+            className="absolute inset-0 bg-black/50"
             onClick={() => setMobileAberto(false)}
             aria-hidden
           />

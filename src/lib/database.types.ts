@@ -14,6 +14,9 @@
 
 export type WorkspaceRole = "owner" | "admin" | "member" | "viewer";
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
+
+/** Situação de um pedido de liberação de dispositivo (0033). */
+export type DeviceStatus = "pending" | "approved" | "rejected";
 export type InvitationStatus = "pending" | "accepted" | "revoked";
 export type NotificationType = "task_assigned" | "comment_added";
 
@@ -476,6 +479,28 @@ export type Database = {
         Update: Record<string, never>;
         Relationships: [];
       };
+      device_approval_settings: {
+        Row: { owner_id: string; enabled: boolean; updated_at: string };
+        Insert: { owner_id: string; enabled?: boolean; updated_at?: string };
+        Update: { enabled?: boolean; updated_at?: string };
+        Relationships: [];
+      };
+      devices: {
+        Row: {
+          id: string;
+          owner_id: string;
+          user_id: string;
+          device_id: string;
+          label: string;
+          status: DeviceStatus;
+          requested_at: string;
+          decided_at: string | null;
+          decided_by: string | null;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
       push_subscriptions: {
         Row: {
           id: string;
@@ -690,6 +715,22 @@ export type Database = {
       list_company_people: {
         Args: { p_workspace_id: string };
         Returns: { id: string; full_name: string | null; email: string | null }[];
+      };
+      device_status: {
+        Args: { p_device_id: string };
+        Returns: "ok" | "unknown" | DeviceStatus;
+      };
+      request_device_approval: {
+        Args: { p_device_id: string; p_label: string };
+        Returns: number;
+      };
+      decide_device: {
+        Args: { p_id: string; p_approve: boolean };
+        Returns: undefined;
+      };
+      remove_device: {
+        Args: { p_id: string };
+        Returns: undefined;
       };
       register_push_subscription: {
         Args: { p_endpoint: string; p_p256dh: string; p_auth: string; p_user_agent: string };

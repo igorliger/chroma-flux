@@ -14,6 +14,7 @@ import {
 import type {
   CustomFieldDefinition,
   CustomFieldValue,
+  DeviceStatus,
   Invitation,
   MemberWithProfile,
   PersonalTaskOverview,
@@ -24,7 +25,7 @@ import type {
   Workspace,
   WorkspaceRole,
 } from "@/lib/database.types";
-import { isResponsible } from "@/lib/utils";
+import { chunk, isResponsible } from "@/lib/utils";
 import { adaptarLembrete, adaptarTarefaDeEspaco, type UnifiedTask } from "@/lib/unified-tasks";
 
 export type { TaskOverview };
@@ -1147,4 +1148,73 @@ export async function listMyHolidays(): Promise<Holiday[]> {
     .gte("date", desde)
     .order("date");
   return (data ?? []) as Holiday[];
+}
+
+// ---------------------------------------------------------------------------
+// Liberação por dispositivo (migração 0033) — recurso opcional
+// ---------------------------------------------------------------------------
+export type CompanyDevice = {
+  id: string;
+  ownerId: string;
+  person: { id: string; name: string };
+  label: string;
+  status: DeviceStatus;
+  requestedAt: string;
+};
+
+export type DeviceApprovalOverview = {
+  /** `false` quando a migração 0033 ainda não foi aplicada. */
+  installed: boolean;
+  /** Exigência ligada para os espaços de quem está logado (como dono). */
+  enabled: boolean;
+  /** Pedidos e dispositivos que quem está logado pode decidir. */
+  devices: CompanyDevice[];
+};
+
+/**
+ * Situação do recurso para a tela de configurações. Lê só o que a RLS deixa:
+ * o próprio dono e os admins dos espaços dele veem os pedidos da empresa.
+ * Se as tabelas não existirem ainda, devolve `installed: false` em vez de
+ * quebrar a página.
+ */
+export async function getDeviceApprovalOverview(): Promise<DeviceApprovalOverview> {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  const [{ data: config, error: erroConfig }, { data: linhas, error: erroLinhas }] =
+    await Promise.all([
+      supabase
+        .from("device_approval_settings")
+        .select("enabled")
+        .eq("owner_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("devices")
+        .select("*")
+        .neq("user_id", user.id)
+        .order("requested_at", { ascending: false })
+        .limit(500),
+    ]);
+
+  if (erroConfig || erroLinhas) return { installed: false, enabled: false, devices: [] };
+
+  const ids = [...new Set((linhas ?? []).map((d) => d.user_id))];
+  const perfis = new Map<string, string>();
+  for (const lote of chunk(ids)) {
+    const { data } = await supabase.from("profiles").select("id, full_name, email").in("id", lote);
+    for (const p of data ?? []) perfis.set(p.id, p.full_name || p.email || "Sem nome");
+  }
+
+  return {
+    installed: true,
+    enabled: config?.enabled ?? false,
+    devices: (linhas ?? []).map((d) => ({
+      id: d.id,
+      ownerId: d.owner_id,
+      person: { id: d.user_id, name: perfis.get(d.user_id) ?? "Sem nome" },
+      label: d.label || "Dispositivo",
+      status: d.status as DeviceStatus,
+      requestedAt: d.requested_at,
+    })),
+  };
 }

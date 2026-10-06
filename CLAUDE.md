@@ -61,7 +61,7 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
 
 ## Supabase
 
-- Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0032**). Cada
+- Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0033**). Cada
   migração nova também é **anexada em `supabase/schema.sql`** antes do marcador
   `13. VERIFICAÇÃO`. Tipos à mão em `src/lib/database.types.ts`.
 - Aplicar migração na VPS: `docker exec -i supabase-db psql -U postgres -d postgres
@@ -101,6 +101,12 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
   para os outros; "Concluir para todos" fecha de vez.
 - Grupos de acesso com janela de horário: fora da janela o login é bloqueado
   (tela `/fora-do-horario`, texto gentil). O proprietário nunca é bloqueado.
+- Liberação por dispositivo (0033, **opcional, desligada por padrão**): o
+  proprietário liga em Configurações; aí membros/visualizadores só entram por
+  navegador liberado (cookie `cf_device`, id aleatório). O middleware chama
+  `device_status` e manda para `/dispositivo`, onde a pessoa pede; dono e
+  admins liberam em Configurações. Dono e admins nunca são bloqueados.
+  Erro na RPC (ou migração não aplicada) não bloqueia ninguém.
 - Feriados (`holidays`, por proprietário, valem para todos os espaços dele):
   prazo que cai em feriado ou fim de semana vai para o próximo dia útil;
   sem resumo diário de push em feriado. Já cadastrados nacionais + BA +
