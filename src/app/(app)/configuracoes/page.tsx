@@ -5,6 +5,7 @@ import { signOutAction } from "@/app/actions/auth";
 import { WorkspacesShell } from "@/components/layout/workspaces-shell";
 import { Card } from "@/components/ui";
 import {
+  getDeviceApprovalOverview,
   getMyPermissionMatrix,
   getMyProfile,
   getTeamOverview,
@@ -19,6 +20,7 @@ import { ROLES, canAdminister } from "@/lib/utils";
 import { NotificationSettings } from "@/components/notifications/notification-settings";
 
 import { AccessGroupsPanel } from "./access-groups-panel";
+import { DevicesPanel } from "./devices-panel";
 import { HolidaysPanel } from "./holidays-panel";
 import { TeamInviteForm } from "./team-invite-form";
 import { TeamPanel } from "./team-panel";
@@ -59,7 +61,11 @@ export default async function ConfiguracoesPage() {
   const mandaEmAlgumEspaco = workspaces.some((w) => canAdminister(w.role));
 
   // Convites e equipe: só do proprietário (vazio para os demais).
-  const [equipe, feriados] = await Promise.all([getTeamOverview(), listMyHolidays()]);
+  const [equipe, feriados, dispositivos] = await Promise.all([
+    getTeamOverview(),
+    listMyHolidays(),
+    mandaEmAlgumEspaco ? getDeviceApprovalOverview() : null,
+  ]);
 
   // Só o booleano sai do servidor — nunca o valor da chave.
   const emailConfigurado = Boolean(process.env.RESEND_API_KEY?.trim());
@@ -211,6 +217,27 @@ export default async function ConfiguracoesPage() {
               </p>
               <AccessGroupsPanel grupos={grupos} membros={membrosDaEquipe} />
             </Card>
+
+            {dispositivos && (
+              <Card className="mt-6">
+                <h2 className="flex items-center gap-2 font-semibold text-ink-900">
+                  Liberação por dispositivo
+                  <span className="rounded-full border border-ink-200 px-2 py-0.5 text-[11px] font-medium text-ink-500">
+                    Opcional
+                  </span>
+                </h2>
+                <p className="mb-4 mt-1 text-sm text-ink-500">
+                  Quando ligado, cada membro só entra no Chroma Flux pelos computadores e
+                  celulares que um administrador liberar. No primeiro acesso de um aparelho
+                  novo, a pessoa pede a liberação e o pedido aparece aqui. Você e os
+                  administradores nunca são bloqueados.
+                </p>
+                <DevicesPanel
+                  overview={dispositivos}
+                  canToggle={meusEspacos.length > 0}
+                />
+              </Card>
+            )}
           </>
         )}
       </main>

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+import { DEVICE_COOKIE } from "@/lib/devices";
 import { getSupabasePublishableKey, getSupabaseUrl, isSupabaseConfigured } from "@/lib/env";
 
 // "/convite": página do link do e-mail de convite — quem chega nela ainda
@@ -17,6 +18,14 @@ function isPublic(pathname: string) {
  * para deslogar. Tudo que é público já passa antes desta checagem.
  */
 const ALLOWED_WHILE_BLOCKED = ["/fora-do-horario"];
+
+/**
+ * Liberação por dispositivo (migração 0033, recurso opcional). Cada navegador
+ * ganha um id aleatório num cookie; com o recurso ligado pelo proprietário,
+ * quem não é dono nem admin só entra de um dispositivo liberado. A tela de
+ * pedido e a de horário continuam acessíveis para não virar loop.
+ */
+const ALLOWED_WHILE_DEVICE_BLOCKED = ["/dispositivo", "/fora-do-horario"];
 
 /**
  * Monta a URL de redirecionamento a partir do que o Nginx repassou, não do
@@ -51,6 +60,24 @@ export async function updateSession(request: NextRequest) {
 
   let response = NextResponse.next({ request });
 
+  // O id do dispositivo nasce na primeira visita e vale ~400 dias (o máximo
+  // que os navegadores aceitam). Vai em toda resposta — inclusive nos
+  // redirecionamentos — para não trocar de id no meio do caminho.
+  const deviceIdExistente = request.cookies.get(DEVICE_COOKIE)?.value;
+  const deviceId = deviceIdExistente ?? crypto.randomUUID();
+  const comDispositivo = (res: NextResponse) => {
+    if (!deviceIdExistente) {
+      res.cookies.set(DEVICE_COOKIE, deviceId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 400,
+      });
+    }
+    return res;
+  };
+
   const supabase = createServerClient(getSupabaseUrl(), getSupabasePublishableKey(), {
     cookies: {
       getAll() {
@@ -75,11 +102,11 @@ export async function updateSession(request: NextRequest) {
   if (!user && !isPublic(pathname)) {
     const redirect = redirectTo(request, "/login");
     redirect.searchParams.set("proximo", pathname);
-    return NextResponse.redirect(redirect);
+    return comDispositivo(NextResponse.redirect(redirect));
   }
 
   if (user && (pathname === "/login" || pathname === "/cadastro")) {
-    return NextResponse.redirect(redirectTo(request, "/espacos"));
+    return comDispositivo(NextResponse.redirect(redirectTo(request, "/espacos")));
   }
 
   // Fora da janela de uso: manda para a tela de aviso em vez do conteúdo —
@@ -93,9 +120,25 @@ export async function updateSession(request: NextRequest) {
   ) {
     const { data: bloqueado } = await supabase.rpc("is_blocked_by_access_window");
     if (bloqueado) {
-      return NextResponse.redirect(redirectTo(request, "/fora-do-horario"));
+      return comDispositivo(NextResponse.redirect(redirectTo(request, "/fora-do-horario")));
     }
   }
 
-  return response;
+  // Dispositivo não liberado: manda para a tela de pedido. Como na janela,
+  // erro na chamada (ou a migração 0033 ainda não aplicada) não bloqueia
+  // ninguém. Desligado — o padrão — a função devolve "ok" para todos.
+  if (
+    user &&
+    !isPublic(pathname) &&
+    !ALLOWED_WHILE_DEVICE_BLOCKED.some((route) => pathname.startsWith(route))
+  ) {
+    const { data: situacao, error } = await supabase.rpc("device_status", {
+      p_device_id: deviceId,
+    });
+    if (!error && situacao && situacao !== "ok") {
+      return comDispositivo(NextResponse.redirect(redirectTo(request, "/dispositivo")));
+    }
+  }
+
+  return comDispositivo(response);
 }
