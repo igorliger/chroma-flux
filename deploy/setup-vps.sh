@@ -142,6 +142,8 @@ chmod 755 /usr/local/bin/flux-deploy
 # ---------------------------------------------------------------------------
 verde "6/8 Nginx"
 install -m 644 "$APP_DIR/repo/deploy/nginx-chroma-flux.conf" /etc/nginx/sites-available/chroma-flux
+# Buffers de cabeçalho maiores (cookies do Supabase) — ver o próprio arquivo.
+install -m 644 "$APP_DIR/repo/deploy/nginx-buffers.conf" /etc/nginx/conf.d/chroma-flux-buffers.conf
 ln -sfn /etc/nginx/sites-available/chroma-flux /etc/nginx/sites-enabled/chroma-flux
 rm -f /etc/nginx/sites-enabled/default
 nginx -t

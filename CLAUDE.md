@@ -26,7 +26,7 @@ você mesmo tudo o que puder.
 |---|---|
 | Site (Next.js) | VPS Hostinger KVM 2 `srv2012841`, IP 179.199.150.51, Ubuntu 24.04 |
 | Processo | PM2 do usuário `flux`, app `chroma-flux`, `next start` em 127.0.0.1:3000 |
-| Proxy/HTTPS | Nginx (`/etc/nginx/sites-available/chroma-flux`) + Let's Encrypt (certbot, renovação automática) |
+| Proxy/HTTPS | Nginx (`/etc/nginx/sites-available/chroma-flux`) + Let's Encrypt (certbot, renovação automática). Buffers de cabeçalho em `/etc/nginx/conf.d/chroma-flux-buffers.conf` (cópia em `deploy/nginx-buffers.conf`) — sem eles, 502 para quem está logado e em consultas longas à API |
 | Código em produção | `/opt/chroma-flux/current` → `/opt/chroma-flux/releases/<data>-<sha>` |
 | Variáveis | `/opt/chroma-flux/shared/.env.production` (chmod 600, dono `flux`) |
 | Banco, login, arquivos, funções | Supabase auto-hospedado (Docker) nesta VPS, `/opt/supabase` (compose oficial), exposto em `https://api.chromaflux.com.br` — migrado da nuvem em 26/09/2026, roteiro em `deploy/supabase/MIGRAR-SUPABASE.md` |
