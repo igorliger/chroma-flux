@@ -61,7 +61,7 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
 
 ## Supabase
 
-- Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0033**). Cada
+- Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0034**). Cada
   migração nova também é **anexada em `supabase/schema.sql`** antes do marcador
   `13. VERIFICAÇÃO`. Tipos à mão em `src/lib/database.types.ts`.
 - Aplicar migração na VPS: `docker exec -i supabase-db psql -U postgres -d postgres
@@ -81,6 +81,10 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
   - `push` — verify_jwt false, autentica pelo header `x-flux-secret`; VAPID
     (`npm:web-push@3.6.7`). Chamada pelo job pg_cron `push-reminders`
     (*/5 min) via `public.call_push_function(jsonb)`.
+    Tipos em `claim_push_reminders`: `due_soon` (15 min antes da hora),
+    `digest` (resumo do dia, 08–20h) e `overdue` (0034: "Você tem N tarefas
+    atrasadas" a cada 15 min, 08–20h, sem feriado; inclui lembretes pessoais;
+    `ref` fixo para o aviso novo substituir o anterior no aparelho).
   - `invite-login` — gera link de acesso (`admin.generateLink`) e devolve
     `token_hash`; o site conclui com `verifyOtp`.
 - Vault: `push_vapid_public_key`, `push_vapid_private_key`, `push_webhook_secret`.
