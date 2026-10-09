@@ -69,16 +69,17 @@ export default async function TarefasPage({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
-      <div className="mb-6">
-        <h1 className="text-[28px] font-bold leading-tight tracking-tight text-ink-900 sm:text-[34px]">Tarefas</h1>
-        <p className="mt-1.5 text-base text-ink-500">
-          {veioComRecorte
-            ? "Recorte vindo do painel. Ajuste os filtros abaixo para ver mais."
-            : `Tudo que está em aberto em ${workspace.name}, ordenado por urgência.`}
-        </p>
-      </div>
-
       <TaskBrowser
+        heading={
+          <>
+            <h1 className="text-[28px] font-bold leading-tight tracking-tight text-ink-900 sm:text-[34px]">Tarefas</h1>
+            <p className="mt-1.5 text-base text-ink-500">
+              {veioComRecorte
+                ? "Recorte vindo do painel. Ajuste os filtros abaixo para ver mais."
+                : `Tudo que está em aberto em ${workspace.name}, ordenado por urgência.`}
+            </p>
+          </>
+        }
         tasks={tasks}
         people={people}
         permissoes={taskPermissions(capacidades)}
