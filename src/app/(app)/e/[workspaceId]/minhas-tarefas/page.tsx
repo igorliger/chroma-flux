@@ -33,14 +33,15 @@ export default async function MyTasksPage({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
-      <div className="mb-6">
-        <h1 className="text-[28px] font-bold leading-tight tracking-tight text-ink-900 sm:text-[34px]">Minhas tarefas</h1>
-        <p className="mt-1.5 text-base text-ink-500">
-          Tudo que está sob sua responsabilidade neste espaço, ordenado por urgência.
-        </p>
-      </div>
-
       <TaskBrowser
+        heading={
+          <>
+            <h1 className="text-[28px] font-bold leading-tight tracking-tight text-ink-900 sm:text-[34px]">Minhas tarefas</h1>
+            <p className="mt-1.5 text-base text-ink-500">
+              Tudo que está sob sua responsabilidade neste espaço, ordenado por urgência.
+            </p>
+          </>
+        }
         tasks={mine}
         people={people}
         permissoes={taskPermissions(capacidades)}

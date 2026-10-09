@@ -58,6 +58,7 @@ export function TaskBrowser({
   customFields = [],
   dependenciesByTask,
   customFieldValuesByTask,
+  heading,
 }: {
   tasks: TaskOverview[];
   people: PersonRef[];
@@ -79,6 +80,9 @@ export function TaskBrowser({
   dependenciesByTask?: Map<string, TaskDependencyInfo>;
   /** Valores dos campos personalizados por tarefa — ver `listCustomFieldValues`. */
   customFieldValuesByTask?: Map<string, Map<string, string>>;
+  /** Título e subtítulo da tela. Com ele, "Nova tarefa" vai para o lado do
+   *  título; sem ele (como no Painel), fica junto da busca. */
+  heading?: React.ReactNode;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -207,40 +211,47 @@ export function TaskBrowser({
   const podeSelecionar = permissoes.edit || permissoes.delete;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        {/* A base acompanha o piso da busca (`min-w-48`). Com `flex-1` puro a
-            base era zero: a linha nunca quebrava, a busca não cedia abaixo do
-            piso e acabava por baixo do botão quando o conteúdo estreitava —
-            com o menu fixo num celular, por exemplo. */}
-        <div className="flex-1 basis-48">
-          <FilterBar
-            filters={filters}
-            onChange={setFilters}
-            people={people}
-            resultCount={visibleTasks.length}
-            totalCount={optimisticTasks.length}
-            sort={ordem}
-            onSortChange={mudarOrdem}
-          />
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2">
-          {podeSelecionar && !modoSelecao && visibleTasks.length > 0 && (
-            <Button variant="secondary" onClick={() => setModoSelecao(true)}>
-              <CheckSquare className="size-4" aria-hidden />
-              Selecionar
-            </Button>
-          )}
-
+    <div className="space-y-5">
+      {heading && (
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">{heading}</div>
           {podeCriar && (
-            <Button onClick={() => setNovaTarefaAberta(true)}>
-              <Plus className="size-4" aria-hidden />
+            <Button
+              onClick={() => setNovaTarefaAberta(true)}
+              className="h-12 shrink-0 rounded-xl px-6 text-base font-semibold shadow-lg shadow-brand-600/25"
+            >
+              <Plus className="size-5" aria-hidden />
               Nova tarefa
             </Button>
           )}
         </div>
-      </div>
+      )}
+
+      <FilterBar
+        filters={filters}
+        onChange={setFilters}
+        people={people}
+        resultCount={visibleTasks.length}
+        totalCount={optimisticTasks.length}
+        sort={ordem}
+        onSortChange={mudarOrdem}
+        acoes={
+          <>
+            {podeSelecionar && !modoSelecao && visibleTasks.length > 0 && (
+              <Button variant="secondary" onClick={() => setModoSelecao(true)}>
+                <CheckSquare className="size-4" aria-hidden />
+                Selecionar
+              </Button>
+            )}
+            {podeCriar && !heading && (
+              <Button onClick={() => setNovaTarefaAberta(true)}>
+                <Plus className="size-4" aria-hidden />
+                Nova tarefa
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {error && (
         <p role="alert" className="rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger-fg">
