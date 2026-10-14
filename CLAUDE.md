@@ -61,7 +61,7 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
 
 ## Supabase
 
-- Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0034**). Cada
+- Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0035**). Cada
   migração nova também é **anexada em `supabase/schema.sql`** antes do marcador
   `13. VERIFICAÇÃO`. Tipos à mão em `src/lib/database.types.ts`.
 - Aplicar migração na VPS: `docker exec -i supabase-db psql -U postgres -d postgres
@@ -115,6 +115,8 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
   prazo que cai em feriado ou fim de semana vai para o próximo dia útil;
   sem resumo diário de push em feriado. Já cadastrados nacionais + BA +
   Salvador 2026–2027 e Dia do Comerciário (tipo "empresa").
+- Concluir antes do dia do prazo é recusado (0031), exceto tarefa pessoal
+  (`is_personal`) e lembrete pessoal (0035).
 - Login: com senha errada o e-mail continua preenchido (React 19 reseta
   `<form action>` — usar `onSubmit` + `startTransition`).
 - `friendlyError` repassa mensagens que começam com "Você ".
