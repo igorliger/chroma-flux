@@ -29,6 +29,15 @@ cd "$REL"
 npm ci --no-audit --no-fund --loglevel=error
 NEXT_TELEMETRY_DISABLED=1 npm run build
 
+# Banco: aplica as migrações novas antes de trocar o site (o código novo
+# pode depender delas). Se uma falhar, a publicação para aqui e o site
+# continua na versão anterior. Instalado por deploy/instalar-migracoes.sh.
+if [[ -x /usr/local/bin/flux-migrate ]]; then
+  sudo -n /usr/local/bin/flux-migrate
+else
+  echo "!! flux-migrate não instalado — migrações novas precisam ser aplicadas à mão."
+fi
+
 trap - ERR
 
 troca() {

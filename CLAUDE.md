@@ -45,7 +45,7 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
 - **Publicar é automático** (desde 02/10/2026): todo push/merge na `main`
   dispara o GitHub Actions `Deploy VPS` (`.github/workflows/deploy-vps.yml`),
   que entra por SSH como `flux` e roda `flux-deploy` (baixa a main, `npm ci`,
-  build numa pasta nova, troca o link `current`, `pm2 reload`; se o site não
+  build numa pasta nova, aplica migrações novas, troca o link `current`, `pm2 reload`; se o site não
   responder, volta sozinho para a versão anterior). Ou seja: **mesclar na
   main = publicar**. Na mão: `sudo -u flux flux-deploy` ou "Run workflow" na
   aba Actions. Scripts em `deploy/`.
@@ -64,7 +64,16 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
 - Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0035**). Cada
   migração nova também é **anexada em `supabase/schema.sql`** antes do marcador
   `13. VERIFICAÇÃO`. Tipos à mão em `src/lib/database.types.ts`.
-- Aplicar migração na VPS: `docker exec -i supabase-db psql -U postgres -d postgres
+- **Migrações são aplicadas sozinhas na publicação** (desde 14/10/2026):
+  `deploy.sh` chama `sudo -n /usr/local/bin/flux-migrate` (cópia em
+  `deploy/flux-migrate.sh`) depois do build e antes de trocar o site. Ele
+  roda cada migração ainda não anotada em `flux.migrations` numa transação;
+  se falhar, a publicação é cancelada e o site fica na versão anterior. O
+  flux só pode rodar esse comando como root (`/etc/sudoers.d/flux-migrate`).
+  Instalado com `sudo bash /opt/chroma-flux/repo/deploy/instalar-migracoes.sh`
+  (uma vez; seguro repetir — também serve para atualizar o flux-migrate).
+  Por isso, migração nova tem que ser segura de rodar numa transação.
+- Aplicar migração à mão na VPS: `docker exec -i supabase-db psql -U postgres -d postgres
   -v ON_ERROR_STOP=1 < arquivo.sql`, ou Studio (túnel SSH `-L 8000:127.0.0.1:8000`,
   http://localhost:8000). Nunca imprimir senha, JWT secret ou service_role.
 - Padrões do banco:
