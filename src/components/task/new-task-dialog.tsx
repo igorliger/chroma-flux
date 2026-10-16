@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { Paperclip, Plus, X } from "lucide-react";
 
 import { createTaskAction, type ActionState } from "@/app/actions/tasks";
@@ -59,6 +59,11 @@ export function NewTaskDialog({
 }) {
   const [state, formAction] = useActionState<ActionState, FormData>(createTaskAction, {});
   const formRef = useRef<HTMLFormElement>(null);
+  // Envio à mão (onSubmit) em vez de `<form action>`: o React 19 limpa o
+  // formulário inteiro depois de cada envio, e um erro (ex.: repetição sem
+  // prazo) apagaria título, descrição e o resto do que foi digitado. Assim,
+  // só `limpar()` — chamado quando a tarefa foi criada — esvazia os campos.
+  const [salvando, startTransition] = useTransition();
 
   // Prazo e repetição vivem em estado: são controles interligados, e o campo
   // de repetição precisa reagir à data escolhida.
@@ -139,7 +144,15 @@ export function NewTaskDialog({
 
   return (
     <Modal open={open} onClose={fechar} title={isPersonal ? "Nova tarefa particular" : "Nova tarefa"}>
-      <form ref={formRef} action={formAction} className="space-y-4">
+      <form
+        ref={formRef}
+        onSubmit={(event) => {
+          event.preventDefault();
+          const dados = new FormData(event.currentTarget);
+          startTransition(() => formAction(dados));
+        }}
+        className="space-y-4"
+      >
         <FormError>{state.error}</FormError>
         {aviso && (
           <p className="rounded-lg bg-warn-bg px-3 py-2 text-sm text-warn-fg">{aviso}</p>
@@ -333,7 +346,7 @@ export function NewTaskDialog({
               <Button type="button" variant="secondary" onClick={fechar} disabled={enviando}>
                 Cancelar
               </Button>
-              <SubmitButton loading={enviando}>
+              <SubmitButton loading={enviando || salvando}>
                 {enviando ? "Enviando anexos…" : "Criar tarefa"}
               </SubmitButton>
             </>
