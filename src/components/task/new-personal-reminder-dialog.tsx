@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { Paperclip, Plus, X } from "lucide-react";
 
 import { createPersonalTaskAction, type ActionState } from "@/app/actions/personal-tasks";
@@ -42,6 +42,11 @@ export function NewPersonalReminderDialog({
 }) {
   const [state, formAction] = useActionState<ActionState, FormData>(createPersonalTaskAction, {});
   const formRef = useRef<HTMLFormElement>(null);
+  // Envio à mão (onSubmit) em vez de `<form action>`: o React 19 limpa o
+  // formulário inteiro depois de cada envio, e um erro (ex.: repetição sem
+  // prazo) apagaria título, descrição e o resto do que foi digitado. Assim,
+  // só `limpar()` — chamado quando a tarefa foi criada — esvazia os campos.
+  const [salvando, startTransition] = useTransition();
 
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [dueTime, setDueTime] = useState<string | null>(null);
@@ -110,7 +115,15 @@ export function NewPersonalReminderDialog({
 
   return (
     <Modal open={open} onClose={fechar} title="Novo lembrete">
-      <form ref={formRef} action={formAction} className="space-y-4">
+      <form
+        ref={formRef}
+        onSubmit={(event) => {
+          event.preventDefault();
+          const dados = new FormData(event.currentTarget);
+          startTransition(() => formAction(dados));
+        }}
+        className="space-y-4"
+      >
         <FormError>{state.error}</FormError>
         {aviso && (
           <p className="rounded-lg bg-warn-bg px-3 py-2 text-sm text-warn-fg">{aviso}</p>
@@ -264,7 +277,7 @@ export function NewPersonalReminderDialog({
               <Button type="button" variant="secondary" onClick={fechar} disabled={enviando}>
                 Cancelar
               </Button>
-              <SubmitButton loading={enviando}>
+              <SubmitButton loading={enviando || salvando}>
                 {enviando ? "Enviando anexos…" : "Criar lembrete"}
               </SubmitButton>
             </>
