@@ -38,6 +38,7 @@ const recurrenceSchema = z.object({
   endsOn: z
     .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal(""), z.null()])
     .transform((v) => (v ? v : null)),
+  holidayShift: z.boolean().optional(),
 });
 
 type ParsedRecurrence = z.infer<typeof recurrenceSchema>;
@@ -64,6 +65,8 @@ function recurrenceColumns(r: ParsedRecurrence) {
     recurrence_weekdays:
       r.type === "weekly" || (r.type === "custom" && r.unit === "week") ? r.weekdays : [],
     recurrence_ends_on: r.endsOn,
+    // Só agenda fixa adia por feriado; o banco também força isso (0036).
+    holiday_week_shift: r.type !== "none" && r.type !== "periodic" && (r.holidayShift ?? false),
   };
 }
 
