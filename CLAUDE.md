@@ -58,6 +58,12 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
 - Ver site: `sudo -u flux pm2 status` · logs: `sudo -u flux pm2 logs chroma-flux --lines 100`.
 - Trocar chave do Resend: `flux-resend` (pede a chave sem mostrar).
 - Variáveis `NEXT_PUBLIC_*` entram no build → mudou, tem que republicar.
+- Aba aberta antes de uma publicação: o Next 15 troca o id das Server Actions
+  a cada build ("Failed to find Server Action" no log, "Algo deu errado" na
+  tela). `VersionWatcher` (layout raiz) compara `NEXT_PUBLIC_VERSAO` (marca do
+  build, `next.config.ts`) com `/api/versao` ao voltar para a aba e a cada
+  5 min: recarrega sozinho se não houver janela aberta, senão mostra faixa
+  "Atualizar". Os `error.tsx` recarregam sozinhos nesse erro.
 
 ## Supabase
 

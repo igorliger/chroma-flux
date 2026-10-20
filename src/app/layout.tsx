@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 
 import { themeScript } from "@/components/theme";
+import { VersionWatcher } from "@/components/version-watcher";
 
 import "./globals.css";
 
@@ -34,7 +35,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="min-h-full antialiased">{children}</body>
+      <body className="min-h-full antialiased">
+        {children}
+        <VersionWatcher />
+      </body>
     </html>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, RotateCw } from "lucide-react";
 
 import { Button } from "@/components/ui";
+import { isVersaoAntiga, recarregarParaVersaoNova } from "@/lib/version";
 
 /** Falha ao carregar "Minhas tarefas": explica e oferece tentar de novo. */
 export default function ErroMinhasTarefas({
@@ -19,6 +20,8 @@ export default function ErroMinhasTarefas({
 
   useEffect(() => {
     console.error(error);
+    // Aba de antes da última publicação: recarregar resolve (versão nova).
+    if (isVersaoAntiga(error)) recarregarParaVersaoNova();
   }, [error]);
 
   return (
