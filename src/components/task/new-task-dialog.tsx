@@ -229,6 +229,7 @@ export function NewTaskDialog({
             onDueTimeChange={setDueTime}
             onRecurrenceChange={setRecurrence}
             idPrefix="nova-tarefa"
+            holidayShiftOption
           />
         </Field>
 

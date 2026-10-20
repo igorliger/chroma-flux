@@ -620,6 +620,7 @@ export function TaskPanel({
               pending={pendencia}
               disabled={!permissoes.edit}
               idPrefix={`painel-${task.id}`}
+              holidayShiftOption
             />
           </section>
 

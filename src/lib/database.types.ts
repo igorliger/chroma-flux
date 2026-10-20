@@ -85,6 +85,11 @@ export type TaskRow = {
   is_personal: boolean;
   /** Coluna do quadro Kanban. Só tarefas de topo aparecem no quadro. */
   board_status: TaskBoardStatus;
+  /** Repetição: semana com feriado adia 1 dia útil por feriado (0036).
+   *  Opcional: some se o site rodar antes da migração. */
+  holiday_week_shift?: boolean;
+  /** Dia da agenda antes do adiamento (0036). */
+  recurrence_anchor?: string | null;
 };
 
 /**
@@ -221,6 +226,7 @@ export type Database = {
           recurrence_unit?: RecurrenceUnit;
           recurrence_weekdays?: number[];
           recurrence_ends_on?: string | null;
+          holiday_week_shift?: boolean;
           board_status?: TaskBoardStatus;
         };
         Update: {
@@ -239,6 +245,7 @@ export type Database = {
           recurrence_unit?: RecurrenceUnit;
           recurrence_weekdays?: number[];
           recurrence_ends_on?: string | null;
+          holiday_week_shift?: boolean;
           board_status?: TaskBoardStatus;
         };
         Relationships: [];

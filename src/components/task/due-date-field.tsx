@@ -34,6 +34,7 @@ export function DueDateField({
   pending = null,
   disabled = false,
   idPrefix = "prazo",
+  holidayShiftOption = false,
 }: {
   dueDate: string | null;
   dueTime: string | null;
@@ -48,6 +49,8 @@ export function DueDateField({
   pending?: string | null;
   disabled?: boolean;
   idPrefix?: string;
+  /** Mostra "Semana com feriado: adiar 1 dia" (só tarefas de espaço, 0036). */
+  holidayShiftOption?: boolean;
 }) {
   const set = <K extends keyof Recurrence>(key: K, value: Recurrence[K]) =>
     onRecurrenceChange({ ...recurrence, [key]: value });
@@ -254,6 +257,25 @@ export function DueDateField({
                 })}
               </div>
             </div>
+          )}
+
+          {/* Feriado na semana (0036) */}
+          {holidayShiftOption && recurrenceNeedsDueDate(recurrence.type) && (
+            <label className="flex cursor-pointer items-start gap-2 text-sm text-ink-700">
+              <input
+                type="checkbox"
+                checked={recurrence.holidayShift ?? false}
+                disabled={disabled}
+                onChange={(e) => set("holidayShift", e.target.checked)}
+                className="mt-0.5 size-4 shrink-0 accent-brand-600"
+              />
+              <span>
+                Semana com feriado: adiar 1 dia
+                <span className="block text-xs text-ink-400">
+                  Ex.: feriado na segunda — a de terça vai para quarta, a de quinta para sexta.
+                </span>
+              </span>
+            </label>
           )}
 
           {/* Fim da série */}

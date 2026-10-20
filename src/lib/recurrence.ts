@@ -15,6 +15,8 @@ export type Recurrence = {
   /** 0 = domingo … 6 = sábado. */
   weekdays: number[];
   endsOn: string | null;
+  /** Só tarefas de espaço (0036): feriado na semana adia 1 dia útil. */
+  holidayShift?: boolean;
 };
 
 export const NO_RECURRENCE: Recurrence = {
@@ -23,6 +25,7 @@ export const NO_RECURRENCE: Recurrence = {
   unit: "week",
   weekdays: [],
   endsOn: null,
+  holidayShift: false,
 };
 
 export const RECURRENCE_TYPES: { value: RecurrenceType; label: string; hint?: string }[] = [
@@ -192,6 +195,7 @@ export function recurrenceFromTask(task: {
   recurrence_unit: RecurrenceUnit;
   recurrence_weekdays: number[] | null;
   recurrence_ends_on: string | null;
+  holiday_week_shift?: boolean | null;
 }): Recurrence {
   return {
     type: task.recurrence_type ?? "none",
@@ -199,6 +203,7 @@ export function recurrenceFromTask(task: {
     unit: task.recurrence_unit ?? "week",
     weekdays: task.recurrence_weekdays ?? [],
     endsOn: task.recurrence_ends_on,
+    holidayShift: task.holiday_week_shift ?? false,
   };
 }
 
