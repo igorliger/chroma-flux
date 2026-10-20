@@ -486,6 +486,13 @@ export type Database = {
         Update: Record<string, never>;
         Relationships: [];
       };
+      /** Interruptor do dono: adiar por feriado em todas as tarefas (0037). */
+      holiday_settings: {
+        Row: { owner_id: string; week_shift_all: boolean; updated_at: string };
+        Insert: { owner_id: string; week_shift_all?: boolean; updated_at?: string };
+        Update: { week_shift_all?: boolean; updated_at?: string };
+        Relationships: [];
+      };
       device_approval_settings: {
         Row: { owner_id: string; enabled: boolean; updated_at: string };
         Insert: { owner_id: string; enabled?: boolean; updated_at?: string };
@@ -726,6 +733,10 @@ export type Database = {
       device_status: {
         Args: { p_device_id: string };
         Returns: "ok" | "unknown" | DeviceStatus;
+      };
+      set_holiday_week_shift_all: {
+        Args: { p_on: boolean };
+        Returns: number;
       };
       request_device_approval: {
         Args: { p_device_id: string; p_label: string };

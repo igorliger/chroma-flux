@@ -184,7 +184,7 @@ export function TaskPanel({
     // `task` inteiro na lista faria o efeito rodar a cada revalidação e
     // atropelar o que o usuário está editando; por isso só os campos usados.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task.id, task.title, task.description, task.is_completed, (task.completed_by_ids ?? []).join(","), task.due_date, task.due_time, load]);
+  }, [task.id, task.title, task.description, task.is_completed, (task.completed_by_ids ?? []).join(","), task.due_date, task.due_time, task.holiday_week_shift, load]);
 
   useEffect(() => {
     setDependsOn(dependencies?.dependsOn ?? []);

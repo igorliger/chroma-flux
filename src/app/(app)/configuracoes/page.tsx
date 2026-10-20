@@ -6,6 +6,7 @@ import { WorkspacesShell } from "@/components/layout/workspaces-shell";
 import { Card } from "@/components/ui";
 import {
   getDeviceApprovalOverview,
+  getHolidayWeekShiftAll,
   getMyPermissionMatrix,
   getMyProfile,
   getTeamOverview,
@@ -61,9 +62,10 @@ export default async function ConfiguracoesPage() {
   const mandaEmAlgumEspaco = workspaces.some((w) => canAdminister(w.role));
 
   // Convites e equipe: só do proprietário (vazio para os demais).
-  const [equipe, feriados, dispositivos] = await Promise.all([
+  const [equipe, feriados, adiarTodas, dispositivos] = await Promise.all([
     getTeamOverview(),
     listMyHolidays(),
+    getHolidayWeekShiftAll(),
     mandaEmAlgumEspaco ? getDeviceApprovalOverview() : null,
   ]);
 
@@ -204,7 +206,7 @@ export default async function ConfiguracoesPage() {
                   não sai o resumo diário. Pontos facultativos (como Carnaval) não entram
                   sozinhos: cadastre-os aqui se a empresa não trabalhar.
                 </p>
-                <HolidaysPanel feriados={feriados} />
+                <HolidaysPanel feriados={feriados} adiarTodas={adiarTodas} />
               </Card>
             )}
 

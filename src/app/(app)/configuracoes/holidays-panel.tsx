@@ -3,7 +3,12 @@
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { Plus, Trash2 } from "lucide-react";
 
-import { addHolidayAction, deleteHolidayAction, type HolidayState } from "@/app/actions/holidays";
+import {
+  addHolidayAction,
+  deleteHolidayAction,
+  setHolidayWeekShiftAllAction,
+  type HolidayState,
+} from "@/app/actions/holidays";
 import { Field, FormError, FormSuccess, IconButton, Input, Select, SubmitButton } from "@/components/ui";
 import type { Holiday } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -23,12 +28,21 @@ function formatar(iso: string) {
   return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")} · ${DIAS[data.getDay()]}`;
 }
 
-export function HolidaysPanel({ feriados }: { feriados: Holiday[] }) {
+export function HolidaysPanel({
+  feriados,
+  adiarTodas,
+}: {
+  feriados: Holiday[];
+  /** "Semana com feriado: adiar 1 dia" ligado para todas as tarefas (0037). */
+  adiarTodas: boolean;
+}) {
   const [state, formAction] = useActionState<HolidayState, FormData>(addHolidayAction, {});
   const formRef = useRef<HTMLFormElement>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [removendo, startRemocao] = useTransition();
   const [verAnteriores, setVerAnteriores] = useState(false);
+  const [mudandoAdiar, startAdiar] = useTransition();
+  const [avisoAdiar, setAvisoAdiar] = useState<HolidayState>({});
 
   useEffect(() => {
     if (state.success) formRef.current?.reset();
@@ -46,6 +60,42 @@ export function HolidaysPanel({ feriados }: { feriados: Holiday[] }) {
 
   return (
     <div className="space-y-5">
+      <div className="flex items-start justify-between gap-4 rounded-xl border border-ink-200 p-4">
+        <div>
+          <p className="text-sm font-medium text-ink-900">
+            Semana com feriado: adiar 1 dia — todas as tarefas
+          </p>
+          <p className="mt-0.5 text-xs text-ink-500">
+            {adiarTodas
+              ? "Ligado: em toda tarefa repetida, cada feriado da semana (seg–sex) antes do dia adia a tarefa 1 dia útil. Ex.: feriado na segunda — a de terça vai para quarta, a de quinta para sexta."
+              : "Desligado: só adiam as tarefas em que a opção foi marcada, uma por uma, na repetição."}
+          </p>
+          <FormError>{avisoAdiar.error}</FormError>
+          <FormSuccess>{avisoAdiar.success}</FormSuccess>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={adiarTodas}
+          aria-label="Semana com feriado: adiar 1 dia em todas as tarefas"
+          disabled={mudandoAdiar}
+          onClick={() =>
+            startAdiar(async () => setAvisoAdiar(await setHolidayWeekShiftAllAction(!adiarTodas)))
+          }
+          className={cn(
+            "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50",
+            adiarTodas ? "bg-brand-600" : "bg-ink-300",
+          )}
+        >
+          <span
+            className={cn(
+              "inline-block size-5 rounded-full bg-white shadow transition-transform",
+              adiarTodas ? "translate-x-5" : "translate-x-0.5",
+            )}
+          />
+        </button>
+      </div>
+
       <form ref={formRef} action={formAction} className="space-y-3">
         <FormError>{state.error}</FormError>
         <FormSuccess>{state.success}</FormSuccess>
