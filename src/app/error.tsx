@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 
 import { Button } from "@/components/ui";
+import { isVersaoAntiga, recarregarParaVersaoNova } from "@/lib/version";
 
 export default function GlobalError({
   error,
@@ -13,6 +14,8 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     console.error(error);
+    // Aba de antes da última publicação: recarregar resolve (versão nova).
+    if (isVersaoAntiga(error)) recarregarParaVersaoNova();
   }, [error]);
 
   const isConfigError = error.message.includes("Variável de ambiente");
