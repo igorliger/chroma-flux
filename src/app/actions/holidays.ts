@@ -46,6 +46,25 @@ export async function addHolidayAction(
   };
 }
 
+/** Liga/desliga "Semana com feriado: adiar 1 dia" em todas as tarefas (0037). */
+export async function setHolidayWeekShiftAllAction(on: boolean): Promise<HolidayState> {
+  await requireUser();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("set_holiday_week_shift_all", { p_on: on });
+  if (error) {
+    if (error.code === "42501" && error.message.startsWith("Você ")) return { error: error.message };
+    return { error: "Não foi possível mudar a opção. Tente de novo." };
+  }
+  revalidar();
+  const n = Number(data ?? 0);
+  const ajuste = n === 1 ? "1 tarefa ajustada" : `${n} tarefas ajustadas`;
+  return {
+    success: on
+      ? `Ligado para todas as tarefas repetidas (${ajuste}).`
+      : `Desligado para todas as tarefas repetidas (${ajuste}).`,
+  };
+}
+
 export async function deleteHolidayAction(id: string): Promise<HolidayState> {
   if (!z.string().uuid().safeParse(id).success) return { error: "Feriado inválido." };
   const supabase = await createClient();

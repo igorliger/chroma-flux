@@ -1150,6 +1150,21 @@ export async function listMyHolidays(): Promise<Holiday[]> {
   return (data ?? []) as Holiday[];
 }
 
+/**
+ * Interruptor "Semana com feriado: adiar 1 dia" para todas as tarefas (0037).
+ * Sem a migração (ou sem linha), vale desligado.
+ */
+export async function getHolidayWeekShiftAll(): Promise<boolean> {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("holiday_settings")
+    .select("week_shift_all")
+    .eq("owner_id", user.id)
+    .maybeSingle();
+  return Boolean((data as { week_shift_all?: boolean } | null)?.week_shift_all);
+}
+
 // ---------------------------------------------------------------------------
 // Liberação por dispositivo (migração 0033) — recurso opcional
 // ---------------------------------------------------------------------------

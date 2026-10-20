@@ -61,7 +61,7 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
 
 ## Supabase
 
-- Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0036**). Cada
+- Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0037**). Cada
   migração nova também é **anexada em `supabase/schema.sql`** antes do marcador
   `13. VERIFICAÇÃO`. Tipos à mão em `src/lib/database.types.ts`.
 - **Migrações são aplicadas sozinhas na publicação** (desde 14/10/2026):
@@ -127,7 +127,9 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
   `holiday_week_shift`): cada feriado seg–sex da semana antes do dia adia a
   ocorrência 1 dia útil; o dia da agenda fica em `recurrence_anchor`, e a
   próxima ocorrência é calculada a partir dele. Recalcula ao ligar a opção e
-  ao cadastrar/apagar feriado da semana. Já cadastrados nacionais + BA +
+  ao cadastrar/apagar feriado da semana. Interruptor do dono em Configurações › Feriados
+  (0037, `holiday_settings.week_shift_all`, RPC `set_holiday_week_shift_all`):
+  liga/desliga em todas as tarefas repetidas abertas e força nas novas. Já cadastrados nacionais + BA +
   Salvador 2026–2027 e Dia do Comerciário (tipo "empresa").
 - Concluir antes do dia do prazo é recusado (0031), exceto tarefa pessoal
   (`is_personal`) e lembrete pessoal (0035).
