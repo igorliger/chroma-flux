@@ -118,7 +118,7 @@ export function TeamPanel({ equipe }: { equipe: TeamOverview }) {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-ink-900">{c.email}</p>
                 <p className="text-xs text-ink-500">
-                  Convite pendente — entra nos espaços abaixo quando acessar o Chroma Flux
+                  Convite pendente — ainda sem conta; entra nos espaços abaixo ao criar a conta pelo e-mail
                 </p>
               </div>
               <IconButton

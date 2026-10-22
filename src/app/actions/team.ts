@@ -56,25 +56,25 @@ export async function inviteToTeamAction(
     if (r.success) workspaceRoles[e.id] = r.data;
   }
 
-  // Já está na equipe? Então não precisa de convite: é só designar os espaços.
-  const { data: perfil } = await supabase
-    .from("profiles")
-    .select("id")
-    .ilike("email", email.data)
-    .maybeSingle();
-  if (perfil) {
-    if (perfil.id === user.id) return { error: "Esse é o seu próprio e-mail." };
-    const { data: jaNaEquipe } = await supabase
-      .from("team_members")
-      .select("user_id")
-      .eq("owner_id", user.id)
-      .eq("user_id", perfil.id)
-      .maybeSingle();
-    if (jaNaEquipe) {
-      return {
-        error: "Essa pessoa já faz parte da equipe. Escolha os espaços dela na lista abaixo.",
-      };
+  // Já tem conta no Chroma Flux? Entra na equipe e nos espaços na hora, sem
+  // convite por e-mail (0038). Só quem ainda não tem conta recebe convite.
+  const { data: jaTemConta, error: erroConta } = await supabase.rpc("add_existing_to_team", {
+    p_email: email.data,
+    p_roles: workspaceRoles,
+  });
+  if (erroConta) {
+    if (erroConta.code === "42501" && erroConta.message.startsWith("Você ")) {
+      return { error: erroConta.message };
     }
+    return { error: "Não foi possível adicionar a pessoa." };
+  }
+  if (jaTemConta) {
+    revalidarTudo();
+    return {
+      success:
+        `${email.data} já tem conta no Chroma Flux: entrou na equipe e nos espaços ` +
+        `escolhidos na hora, sem precisar de e-mail.`,
+    };
   }
 
   const { data: criado, error } = await supabase
