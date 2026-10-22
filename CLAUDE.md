@@ -67,7 +67,7 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
 
 ## Supabase
 
-- Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0038**). Cada
+- Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0039**). Cada
   migração nova também é **anexada em `supabase/schema.sql`** antes do marcador
   `13. VERIFICAÇÃO`. Tipos à mão em `src/lib/database.types.ts`.
 - **Migrações são aplicadas sozinhas na publicação** (desde 14/10/2026):
@@ -117,6 +117,10 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
   Quem **já tem conta** entra na equipe e nos espaços na hora, sem e-mail
   (0038, RPC `add_existing_to_team`); convite por e-mail só para quem ainda
   não tem conta.
+  Conta em `auth.users` sem linha em `profiles` (aconteceu após a migração
+  para a VPS) quebra equipe/espaços: 0039 cria os perfis que faltam, recria
+  `on_auth_user_created` se puder, e `ensure_profile` é chamado pelas funções
+  de equipe.
 - Tarefa pode ter vários responsáveis (`co_assignee_ids`) ou "Todos"
   (`assigned_to_all`, acompanha quem entra no espaço depois). Conclusão é
   **por pessoa** (`task_completions`): se um conclui, continua aberta/atrasada
