@@ -136,8 +136,9 @@ export default async function ConfiguracoesPage() {
               <Card className="mt-6">
                 <h2 className="font-semibold text-ink-900">Convidados e funções</h2>
                 <p className="mt-1 text-sm text-ink-500">
-                  Convide cada pessoa uma vez só. Depois, escolha em quais espaços ela entra
-                  e com qual função — sem novo convite.
+                  Quem já tem conta no Chroma Flux entra na hora nos espaços escolhidos, sem
+                  e-mail. Quem ainda não tem recebe um convite por e-mail uma vez só. Depois,
+                  mudar espaços e funções vale na hora — sem novo convite.
                 </p>
                 <p
                   className={

@@ -734,6 +734,10 @@ export type Database = {
         Args: { p_device_id: string };
         Returns: "ok" | "unknown" | DeviceStatus;
       };
+      add_existing_to_team: {
+        Args: { p_email: string; p_roles: Record<string, string> };
+        Returns: string | null;
+      };
       set_holiday_week_shift_all: {
         Args: { p_on: boolean };
         Returns: number;
