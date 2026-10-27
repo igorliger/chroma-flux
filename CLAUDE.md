@@ -69,7 +69,7 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
 
 ## Supabase
 
-- Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0039**). Cada
+- Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0040**). Cada
   migração nova também é **anexada em `supabase/schema.sql`** antes do marcador
   `13. VERIFICAÇÃO`. Tipos à mão em `src/lib/database.types.ts`.
 - **Migrações são aplicadas sozinhas na publicação** (desde 14/10/2026):
@@ -127,6 +127,10 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
   (`assigned_to_all`, acompanha quem entra no espaço depois). Conclusão é
   **por pessoa** (`task_completions`): se um conclui, continua aberta/atrasada
   para os outros; "Concluir para todos" fecha de vez.
+  Repetida com vários responsáveis: a próxima ocorrência nasce na **primeira**
+  parte concluída (0040, `spawn_next_occurrence`, chamado pelo gatilho e por
+  `set_my_task_completion`); a antiga perde a repetição e segue aberta só
+  para quem falta.
 - Grupos de acesso com janela de horário: fora da janela o login é bloqueado
   (tela `/fora-do-horario`, texto gentil). O proprietário nunca é bloqueado.
 - Liberação por dispositivo (0033, **opcional, desligada por padrão**): o
