@@ -90,6 +90,8 @@ export type TaskRow = {
   holiday_week_shift?: boolean;
   /** Dia da agenda antes do adiamento (0036). */
   recurrence_anchor?: string | null;
+  /** Link de vídeo (ex.: compartilhamento da Asustor) — 0041. */
+  video_url?: string | null;
 };
 
 /**
@@ -227,6 +229,7 @@ export type Database = {
           recurrence_weekdays?: number[];
           recurrence_ends_on?: string | null;
           holiday_week_shift?: boolean;
+          video_url?: string | null;
           board_status?: TaskBoardStatus;
         };
         Update: {
@@ -246,6 +249,7 @@ export type Database = {
           recurrence_weekdays?: number[];
           recurrence_ends_on?: string | null;
           holiday_week_shift?: boolean;
+          video_url?: string | null;
           board_status?: TaskBoardStatus;
         };
         Relationships: [];

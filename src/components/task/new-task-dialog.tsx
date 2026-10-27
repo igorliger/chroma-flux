@@ -181,6 +181,17 @@ export function NewTaskDialog({
           />
         </Field>
 
+        <Field label="Vídeo" htmlFor="task-video" hint="Opcional. Link do vídeo (ex.: compartilhamento da Asustor).">
+          <Input
+            id="task-video"
+            name="videoUrl"
+            type="url"
+            inputMode="url"
+            placeholder="https://…"
+            maxLength={2000}
+          />
+        </Field>
+
         {!isPersonal && (
           <Field label="Responsáveis" hint="Marque uma ou mais pessoas — ou Todos.">
             {/* O primeiro marcado é o principal; os demais, outros responsáveis. */}
