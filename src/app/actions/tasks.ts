@@ -25,6 +25,18 @@ const optionalUuid = z
 
 const priority = z.enum(["low", "medium", "high", "urgent"]);
 
+/** Link de vídeo da tarefa (0041): vazio = sem vídeo. */
+const videoUrl = z
+  .union([
+    z.literal(""),
+    z
+      .string()
+      .trim()
+      .max(2000, "Link do vídeo muito longo.")
+      .regex(/^https?:\/\/\S+$/i, "O link do vídeo precisa começar com http:// ou https://."),
+  ])
+  .transform((v) => (v ? v : null));
+
 /**
  * A recorrência trafega como um único campo JSON no formulário. São cinco
  * valores que só fazem sentido juntos — espalhá-los em cinco campos soltos
@@ -196,6 +208,9 @@ export async function createTaskAction(
   // apontar para a tarefa logo em seguida, sem depender de RETURNING.
   const taskId = randomUUID();
 
+  const video = videoUrl.safeParse(String(formData.get("videoUrl") ?? "").trim());
+  if (!video.success) return { error: video.error.issues[0].message };
+
   const { error } = await supabase.from("tasks").insert({
     id: taskId,
     workspace_id: parsed.data.workspaceId,
@@ -215,6 +230,7 @@ export async function createTaskAction(
     due_time: parsed.data.dueDate ? parsed.data.dueTime : null,
     position: parsed.data.position,
     created_by: user.id,
+    ...(video.data ? { video_url: video.data } : {}),
     // Só toca nas colunas de recorrência quando há repetição de fato: assim
     // criar uma tarefa comum continua funcionando mesmo antes de a migração
     // 0004 ser aplicada ao banco.
@@ -339,6 +355,7 @@ const patchSchema = z.object({
   is_completed: z.boolean().optional(),
   board_status: boardStatus.optional(),
   position: z.number().optional(),
+  video_url: z.union([videoUrl, z.null()]).optional(),
   /**
    * Concluir/reabrir a tarefa inteira mesmo sendo compartilhada — o botão
    * "Concluir para todos" de quem administra. Sem isto, um responsável
@@ -447,6 +464,7 @@ export async function patchTaskAction(
   if (parsed.data.priority !== undefined) fields.priority = parsed.data.priority;
   if (parsed.data.due_date !== undefined) fields.due_date = parsed.data.due_date;
   if (parsed.data.position !== undefined) fields.position = parsed.data.position;
+  if (parsed.data.video_url !== undefined) fields.video_url = parsed.data.video_url;
 
   let boardStatusFinal: TaskBoardStatus | undefined = parsed.data.board_status;
 

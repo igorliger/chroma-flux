@@ -69,7 +69,7 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
 
 ## Supabase
 
-- Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0040**). Cada
+- Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0041**). Cada
   migração nova também é **anexada em `supabase/schema.sql`** antes do marcador
   `13. VERIFICAÇÃO`. Tipos à mão em `src/lib/database.types.ts`.
 - **Migrações são aplicadas sozinhas na publicação** (desde 14/10/2026):
@@ -150,6 +150,10 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
   (0037, `holiday_settings.week_shift_all`, RPC `set_holiday_week_shift_all`):
   liga/desliga em todas as tarefas repetidas abertas e força nas novas. Já cadastrados nacionais + BA +
   Salvador 2026–2027 e Dia do Comerciário (tipo "empresa").
+- Vídeo na tarefa (0041, `tasks.video_url`, só http/https): campo "Vídeo" no
+  painel e na criação; botão "Assistir vídeo" abre o link numa aba nova (a
+  página de compartilhamento da Asustor/EZ-Connect não pode ser embutida).
+  Selo "Contém vídeo" nas listas; a próxima ocorrência herda o link.
 - Concluir antes do dia do prazo é recusado (0031), exceto tarefa pessoal
   (`is_personal`) e lembrete pessoal (0035).
 - Login: com senha errada o e-mail continua preenchido (React 19 reseta

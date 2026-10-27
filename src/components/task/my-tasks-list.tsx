@@ -254,7 +254,11 @@ function TaskRow({
               {task.comment_count}
             </span>
           )}
-          <AttachmentBadges total={task.attachment_count} images={task.image_count} />
+          <AttachmentBadges
+            total={task.attachment_count}
+            images={task.image_count}
+            video={Boolean(task.video_url)}
+          />
           {isSharedTask(task) && (
             <span
               className="inline-flex items-center gap-1"

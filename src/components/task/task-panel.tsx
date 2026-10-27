@@ -7,6 +7,7 @@ import {
   Flag,
   Loader2,
   Paperclip,
+  PlayCircle,
   Plus,
   Trash2,
   Users,
@@ -110,6 +111,7 @@ export function TaskPanel({
   // Campos editáveis mantidos localmente para a digitação não engasgar.
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
+  const [videoUrl, setVideoUrl] = useState(task.video_url ?? "");
   // Compartilhada (vários responsáveis): quem é responsável conclui a sua
   // parte; o botão mostra a parte dessa pessoa, não a tarefa inteira.
   const compartilhada = isSharedTask(task);
@@ -174,6 +176,7 @@ export function TaskPanel({
   useEffect(() => {
     setTitle(task.title);
     setDescription(task.description);
+    setVideoUrl(task.video_url ?? "");
     setCompleted(isDoneFor(task, currentUserId));
     setDueDate(task.due_date);
     setDueTime(task.due_time);
@@ -184,7 +187,7 @@ export function TaskPanel({
     // `task` inteiro na lista faria o efeito rodar a cada revalidação e
     // atropelar o que o usuário está editando; por isso só os campos usados.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task.id, task.title, task.description, task.is_completed, (task.completed_by_ids ?? []).join(","), task.due_date, task.due_time, task.holiday_week_shift, load]);
+  }, [task.id, task.title, task.description, task.is_completed, (task.completed_by_ids ?? []).join(","), task.due_date, task.due_time, task.holiday_week_shift, task.video_url, load]);
 
   useEffect(() => {
     setDependsOn(dependencies?.dependsOn ?? []);
@@ -623,6 +626,41 @@ export function TaskPanel({
               holidayShiftOption
             />
           </section>
+
+          {/* Vídeo (0041): link aberto numa aba nova — a página de
+              compartilhamento da Asustor não pode ser embutida aqui. */}
+          {(permissoes.edit || task.video_url) && (
+            <section className="mt-5 rounded-xl border border-ink-200 p-3">
+              <h3 className="mb-2 text-sm font-semibold text-ink-700">Vídeo</h3>
+              {permissoes.edit && (
+                <Input
+                  type="url"
+                  inputMode="url"
+                  value={videoUrl}
+                  placeholder="Cole o link do vídeo (ex.: compartilhamento da Asustor)"
+                  aria-label="Link do vídeo"
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  onBlur={async () => {
+                    const novo = videoUrl.trim();
+                    if (novo === (task.video_url ?? "")) return;
+                    const ok = await patch({ video_url: novo || null });
+                    if (!ok) setVideoUrl(task.video_url ?? "");
+                  }}
+                />
+              )}
+              {task.video_url && (
+                <a
+                  href={task.video_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700"
+                >
+                  <PlayCircle className="size-4" aria-hidden />
+                  Assistir vídeo
+                </a>
+              )}
+            </section>
+          )}
 
           {/* Descrição */}
           <section className="mt-6">
