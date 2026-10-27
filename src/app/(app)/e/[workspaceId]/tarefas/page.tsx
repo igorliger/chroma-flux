@@ -68,7 +68,7 @@ export default async function TarefasPage({
   const filtros = filtersFromQuery({ ...query, situacao: query.situacao ?? "abertas" });
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
       <TaskBrowser
         heading={
           <>

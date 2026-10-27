@@ -6,17 +6,20 @@ import { useRouter } from "next/navigation";
 import { CheckSquare, Plus } from "lucide-react";
 
 import { FilterBar } from "@/components/filters/filter-bar";
+import { MyTasksToolbar } from "@/components/filters/my-tasks-toolbar";
+import { MyTasksList, type TaskAction } from "@/components/task/my-tasks-list";
 import { TaskList } from "@/components/task/task-list";
 import { TaskPanel } from "@/components/task/task-panel";
 import { NewTaskDialog } from "@/components/task/new-task-dialog";
 import { BulkActionBar } from "@/components/task/bulk-action-bar";
-import { Button } from "@/components/ui";
+import { Button, Modal } from "@/components/ui";
 import {
   bulkCompleteTasksAction,
   bulkDeleteTasksAction,
   patchTaskAction,
 } from "@/app/actions/tasks";
 import { fireCompletionBurst } from "@/lib/completion-burst";
+import { adaptarTarefaDeEspaco, type UnifiedTask } from "@/lib/unified-tasks";
 import { isDoneFor, isResponsible, isSharedTask } from "@/lib/utils";
 import { playCompletionSound } from "@/lib/completion-sound";
 import {
@@ -29,14 +32,16 @@ import {
   type TaskFilters,
 } from "@/lib/filters";
 
+/** O que o "Limpar" do visual largo restaura: só as tarefas em aberto. */
+const FILTROS_PADRAO: TaskFilters = { ...EMPTY_FILTERS, status: "open" };
+
+/** Sem chip de espaço nas linhas: a tela já é de um espaço só. */
+const SEM_ESPACOS = new Map<string, { name: string; color: string }>();
+
 /** Onde a ordem escolhida fica guardada, só neste navegador. */
 const SORT_STORAGE_KEY = "chroma-flux:ordem-tarefas";
 import type { TaskPermissions } from "@/lib/permissions";
-import type {
-  CustomFieldDefinition,
-  PersonRef,
-  TaskOverview,
-} from "@/lib/database.types";
+import type { CustomFieldDefinition, PersonRef, TaskOverview } from "@/lib/database.types";
 import type { TaskDependencyInfo } from "@/lib/queries";
 
 /**
@@ -118,6 +123,8 @@ export function TaskBrowser({
   const [modoSelecao, setModoSelecao] = useState(false);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [bulkPending, startBulkTransition] = useTransition();
+  const [excluindo, setExcluindo] = useState<UnifiedTask | null>(null);
+  const [excluindoPending, startExcluir] = useTransition();
 
   const [optimisticTasks, applyOptimistic] = useOptimistic(
     tasks,
@@ -139,7 +146,11 @@ export function TaskBrowser({
   // Cada um vê a tarefa compartilhada como concluída quando fez a sua parte —
   // para os demais ela continua aberta (e atrasada, se passar do prazo).
   const tarefasParaMim = useMemo(
-    () => optimisticTasks.map((t) => ({ ...t, is_completed: isDoneFor(t, currentUserId) })),
+    () =>
+      optimisticTasks.map((t) => ({
+        ...t,
+        is_completed: isDoneFor(t, currentUserId),
+      })),
     [optimisticTasks, currentUserId],
   );
 
@@ -205,6 +216,28 @@ export function TaskBrowser({
     });
   }
 
+  /** Exclusão de uma tarefa só, pelo menu "⋯" da lista larga. */
+  function confirmarExclusao() {
+    const task = excluindo;
+    if (!task) return;
+    startExcluir(async () => {
+      const result = await bulkDeleteTasksAction(workspaceId, [task.id]);
+      setError(result.error ?? null);
+      setExcluindo(null);
+      if (openTaskId === task.id) setOpenTaskId(null);
+      router.refresh();
+    });
+  }
+
+  const permiteAcao = (_task: UnifiedTask, acao: TaskAction) =>
+    acao === "delete" ? permissoes.delete : acao === "edit" ? permissoes.edit : permissoes.complete;
+
+  // Com título (telas "Tarefas" e "Minhas tarefas" do espaço) a tela usa o
+  // mesmo visual largo de "Minhas tarefas" geral; sem título (Painel), o
+  // compacto de sempre.
+  const largo = Boolean(heading);
+  const linhas = useMemo(() => visibleTasks.map(adaptarTarefaDeEspaco), [visibleTasks]);
+
   const podeCriar = allowCreate && permissoes.create;
   // Sem editar nem excluir, não há nada para fazer em massa — a caixa de
   // seleção ficaria só de enfeite.
@@ -227,31 +260,56 @@ export function TaskBrowser({
         </div>
       )}
 
-      <FilterBar
-        filters={filters}
-        onChange={setFilters}
-        people={people}
-        resultCount={visibleTasks.length}
-        totalCount={optimisticTasks.length}
-        sort={ordem}
-        onSortChange={mudarOrdem}
-        acoes={
-          <>
-            {podeSelecionar && !modoSelecao && visibleTasks.length > 0 && (
-              <Button variant="secondary" onClick={() => setModoSelecao(true)}>
-                <CheckSquare className="size-4" aria-hidden />
-                Selecionar
-              </Button>
-            )}
-            {podeCriar && !heading && (
-              <Button onClick={() => setNovaTarefaAberta(true)}>
-                <Plus className="size-4" aria-hidden />
-                Nova tarefa
-              </Button>
-            )}
-          </>
-        }
-      />
+      {largo ? (
+        <>
+          <MyTasksToolbar
+            filters={filters}
+            defaults={FILTROS_PADRAO}
+            onChange={setFilters}
+            people={people}
+            resultCount={visibleTasks.length}
+            totalCount={optimisticTasks.length}
+            sort={ordem}
+            onSortChange={mudarOrdem}
+          />
+          {podeSelecionar && !modoSelecao && visibleTasks.length > 0 && (
+            <Button
+              variant="secondary"
+              onClick={() => setModoSelecao(true)}
+              className="h-10 rounded-xl px-4"
+            >
+              <CheckSquare className="size-4" aria-hidden />
+              Selecionar
+            </Button>
+          )}
+        </>
+      ) : (
+        <FilterBar
+          filters={filters}
+          onChange={setFilters}
+          people={people}
+          resultCount={visibleTasks.length}
+          totalCount={optimisticTasks.length}
+          sort={ordem}
+          onSortChange={mudarOrdem}
+          acoes={
+            <>
+              {podeSelecionar && !modoSelecao && visibleTasks.length > 0 && (
+                <Button variant="secondary" onClick={() => setModoSelecao(true)}>
+                  <CheckSquare className="size-4" aria-hidden />
+                  Selecionar
+                </Button>
+              )}
+              {podeCriar && !heading && (
+                <Button onClick={() => setNovaTarefaAberta(true)}>
+                  <Plus className="size-4" aria-hidden />
+                  Nova tarefa
+                </Button>
+              )}
+            </>
+          }
+        />
+      )}
 
       {error && (
         <p role="alert" className="rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger-fg">
@@ -280,18 +338,54 @@ export function TaskBrowser({
         />
       )}
 
-      <TaskList
-        tasks={visibleTasks}
-        peopleById={peopleById}
-        canComplete={permissoes.complete}
-        onOpenTask={(task) => setOpenTaskId(task.id)}
-        onToggleTask={handleToggle}
-        emptyTitle={emptyTitle}
-        emptyDescription={emptyDescription}
-        selectable={modoSelecao}
-        selectedIds={selecionadas}
-        onToggleSelect={alternarSelecao}
-      />
+      {largo && linhas.length > 0 ? (
+        <MyTasksList
+          tasks={linhas}
+          peopleById={peopleById}
+          spaceById={SEM_ESPACOS}
+          onOpenTask={(task) => setOpenTaskId(task.id)}
+          onToggleTask={handleToggle}
+          onDeleteTask={setExcluindo}
+          can={permiteAcao}
+          selectable={modoSelecao}
+          selectedIds={selecionadas}
+          onToggleSelect={alternarSelecao}
+        />
+      ) : (
+        <TaskList
+          tasks={visibleTasks}
+          peopleById={peopleById}
+          canComplete={permissoes.complete}
+          onOpenTask={(task) => setOpenTaskId(task.id)}
+          onToggleTask={handleToggle}
+          emptyTitle={emptyTitle}
+          emptyDescription={emptyDescription}
+          selectable={modoSelecao}
+          selectedIds={selecionadas}
+          onToggleSelect={alternarSelecao}
+        />
+      )}
+
+      <Modal
+        open={!!excluindo}
+        onClose={() => setExcluindo(null)}
+        title="Excluir tarefa?"
+        description={
+          excluindo
+            ? `"${excluindo.title}" será excluída. Esta ação não pode ser desfeita.`
+            : undefined
+        }
+        size="sm"
+      >
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setExcluindo(null)}>
+            Cancelar
+          </Button>
+          <Button variant="danger" size="sm" loading={excluindoPending} onClick={confirmarExclusao}>
+            Excluir
+          </Button>
+        </div>
+      </Modal>
 
       {podeCriar && (
         <NewTaskDialog
