@@ -69,7 +69,7 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
 
 ## Supabase
 
-- Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0041**). Cada
+- Migrações em `supabase/migrations/NNNN_nome.sql` (hoje até **0042**). Cada
   migração nova também é **anexada em `supabase/schema.sql`** antes do marcador
   `13. VERIFICAÇÃO`. Tipos à mão em `src/lib/database.types.ts`.
 - **Migrações são aplicadas sozinhas na publicação** (desde 14/10/2026):
@@ -142,11 +142,13 @@ A Vercel **não é mais usada** (projeto excluído em 27/09/2026).
 - Feriados (`holidays`, por proprietário, valem para todos os espaços dele):
   prazo que cai em feriado ou fim de semana vai para o próximo dia útil;
   sem resumo diário de push em feriado.
-  Opção por tarefa repetida "Semana com feriado: adiar 1 dia" (0036,
-  `holiday_week_shift`): cada feriado seg–sex da semana antes do dia adia a
-  ocorrência 1 dia útil; o dia da agenda fica em `recurrence_anchor`, e a
-  próxima ocorrência é calculada a partir dele. Recalcula ao ligar a opção e
-  ao cadastrar/apagar feriado da semana. Interruptor do dono em Configurações › Feriados
+  Opção por tarefa repetida "Dia com feriado: passar para o dia seguinte"
+  (0036 + correção 0042, `holiday_week_shift`): só o feriado no próprio dia
+  conta — a ocorrência vai para o próximo dia útil; feriado em outro dia da
+  semana não muda nada (a regra "semana com feriado" da 0036 foi trocada a
+  pedido do Igor). O dia da agenda fica em `recurrence_anchor`, e a próxima
+  ocorrência é calculada a partir dele. Recalcula ao ligar a opção e ao
+  cadastrar/apagar feriado. Interruptor do dono em Configurações › Feriados
   (0037, `holiday_settings.week_shift_all`, RPC `set_holiday_week_shift_all`):
   liga/desliga em todas as tarefas repetidas abertas e força nas novas. Já cadastrados nacionais + BA +
   Salvador 2026–2027 e Dia do Comerciário (tipo "empresa").

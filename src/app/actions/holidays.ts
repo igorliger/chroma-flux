@@ -46,7 +46,7 @@ export async function addHolidayAction(
   };
 }
 
-/** Liga/desliga "Semana com feriado: adiar 1 dia" em todas as tarefas (0037). */
+/** Liga/desliga "Dia com feriado: passar para o dia seguinte" em todas as tarefas (0037). */
 export async function setHolidayWeekShiftAllAction(on: boolean): Promise<HolidayState> {
   await requireUser();
   const supabase = await createClient();

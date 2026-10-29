@@ -1151,7 +1151,7 @@ export async function listMyHolidays(): Promise<Holiday[]> {
 }
 
 /**
- * Interruptor "Semana com feriado: adiar 1 dia" para todas as tarefas (0037).
+ * Interruptor "Dia com feriado: passar para o dia seguinte" para todas as tarefas (0037).
  * Sem a migração (ou sem linha), vale desligado.
  */
 export async function getHolidayWeekShiftAll(): Promise<boolean> {
