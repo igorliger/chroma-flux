@@ -33,7 +33,7 @@ export function HolidaysPanel({
   adiarTodas,
 }: {
   feriados: Holiday[];
-  /** "Semana com feriado: adiar 1 dia" ligado para todas as tarefas (0037). */
+  /** "Dia com feriado: passar para o dia seguinte" ligado para todas as tarefas (0037/0042). */
   adiarTodas: boolean;
 }) {
   const [state, formAction] = useActionState<HolidayState, FormData>(addHolidayAction, {});
@@ -63,12 +63,12 @@ export function HolidaysPanel({
       <div className="flex items-start justify-between gap-4 rounded-xl border border-ink-200 p-4">
         <div>
           <p className="text-sm font-medium text-ink-900">
-            Semana com feriado: adiar 1 dia — todas as tarefas
+            Dia com feriado: passar para o dia seguinte — todas as tarefas
           </p>
           <p className="mt-0.5 text-xs text-ink-500">
             {adiarTodas
-              ? "Ligado: em toda tarefa repetida, cada feriado da semana (seg–sex) antes do dia adia a tarefa 1 dia útil. Ex.: feriado na segunda — a de terça vai para quarta, a de quinta para sexta."
-              : "Desligado: só adiam as tarefas em que a opção foi marcada, uma por uma, na repetição."}
+              ? "Ligado: em toda tarefa repetida, se o dia marcado cair num feriado, ela passa para o dia útil seguinte, sem mudar a agenda das próximas. Ex.: toda quinta, com feriado na quinta — vai para sexta."
+              : "Desligado: só as tarefas em que a opção foi marcada, uma por uma, na repetição, seguem essa regra."}
           </p>
           <FormError>{avisoAdiar.error}</FormError>
           <FormSuccess>{avisoAdiar.success}</FormSuccess>
@@ -77,7 +77,7 @@ export function HolidaysPanel({
           type="button"
           role="switch"
           aria-checked={adiarTodas}
-          aria-label="Semana com feriado: adiar 1 dia em todas as tarefas"
+          aria-label="Dia com feriado: passar para o dia seguinte em todas as tarefas"
           disabled={mudandoAdiar}
           onClick={() =>
             startAdiar(async () => setAvisoAdiar(await setHolidayWeekShiftAllAction(!adiarTodas)))

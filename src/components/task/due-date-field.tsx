@@ -49,7 +49,7 @@ export function DueDateField({
   pending?: string | null;
   disabled?: boolean;
   idPrefix?: string;
-  /** Mostra "Semana com feriado: adiar 1 dia" (só tarefas de espaço, 0036). */
+  /** Mostra "Dia com feriado: passar para o dia seguinte" (só tarefas de espaço, 0036/0042). */
   holidayShiftOption?: boolean;
 }) {
   const set = <K extends keyof Recurrence>(key: K, value: Recurrence[K]) =>
@@ -270,9 +270,10 @@ export function DueDateField({
                 className="mt-0.5 size-4 shrink-0 accent-brand-600"
               />
               <span>
-                Semana com feriado: adiar 1 dia
+                Dia com feriado: passar para o dia seguinte
                 <span className="block text-xs text-ink-400">
-                  Ex.: feriado na segunda — a de terça vai para quarta, a de quinta para sexta.
+                  Ex.: toda terça e quinta, com feriado na quinta — a de quinta vai para sexta; a de
+                  terça continua na terça.
                 </span>
               </span>
             </label>
