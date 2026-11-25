@@ -15,7 +15,7 @@ import { deleteAttachmentAction } from "@/app/actions/attachments";
 import { IconButton } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { uploadAttachments } from "@/lib/upload-attachment";
-import { BUCKET, formatBytes, isImage } from "@/lib/attachments";
+import { BUCKET, filesFromClipboard, formatBytes, isImage, shrinkPastedImages } from "@/lib/attachments";
 import { cn } from "@/lib/utils";
 import type { Attachment } from "@/lib/database.types";
 
@@ -41,6 +41,7 @@ export function Attachments({
   currentUserId,
   compact = false,
   onChanged,
+  incoming = null,
 }: {
   workspaceId: string;
   taskId: string;
@@ -49,6 +50,8 @@ export function Attachments({
   currentUserId: string;
   compact?: boolean;
   onChanged?: () => void;
+  /** Arquivos colados em outro campo (ex.: a descrição) para enviar aqui. */
+  incoming?: { id: number; files: File[] } | null;
 }) {
   const supabase = useRef(createClient()).current;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -125,6 +128,15 @@ export function Attachments({
     onChanged?.();
   }
 
+  // Colado na descrição: chega por aqui e sobe como os demais anexos.
+  const ultimoColado = useRef<number | null>(null);
+  useEffect(() => {
+    if (!incoming || incoming.id === ultimoColado.current || !canWrite) return;
+    ultimoColado.current = incoming.id;
+    void enviar(incoming.files);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incoming]);
+
   async function baixar(anexo: Attachment) {
     const { data, error } = await supabase.storage
       .from(BUCKET)
@@ -153,6 +165,14 @@ export function Attachments({
 
   return (
     <div
+      onPaste={(e) => {
+        // Colar um print ou foto (Ctrl+V) com o foco na área de anexos: vira anexo.
+        const colados = filesFromClipboard(e.clipboardData);
+        if (canWrite && colados.length > 0) {
+          e.preventDefault();
+          void shrinkPastedImages(colados).then(enviar);
+        }
+      }}
       onDragOver={(e) => {
         if (!canWrite) return;
         e.preventDefault();
