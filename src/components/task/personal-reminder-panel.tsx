@@ -11,6 +11,7 @@ import {
 } from "@/app/actions/personal-tasks";
 import { DueDateField } from "@/components/task/due-date-field";
 import { PersonalAttachments } from "@/components/task/personal-attachments";
+import { filesFromClipboard, shrinkPastedImages } from "@/lib/attachments";
 import { extractUrls } from "@/lib/links";
 import { LinkPreview } from "@/components/link-preview";
 import {
@@ -48,6 +49,8 @@ export function PersonalReminderPanel({
 
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
+  // Imagem colada na descrição: vai para os anexos do lembrete.
+  const [colados, setColados] = useState<{ id: number; files: File[] } | null>(null);
   const [completed, setCompleted] = useState(task.is_completed);
   const [dueDate, setDueDate] = useState<string | null>(task.due_date);
   const [dueTime, setDueTime] = useState<string | null>(task.due_time);
@@ -271,8 +274,14 @@ export function PersonalReminderPanel({
             <Textarea
               value={description}
               rows={4}
-              placeholder="Adicione mais contexto…"
+              placeholder="Adicione mais contexto… (cole uma foto com Ctrl+V para anexar)"
               onChange={(e) => setDescription(e.target.value)}
+              onPaste={(e) => {
+                const files = filesFromClipboard(e.clipboardData);
+                if (files.length === 0) return;
+                if (!e.clipboardData.getData("text/plain")) e.preventDefault();
+                void shrinkPastedImages(files).then((prontos) => setColados({ id: Date.now(), files: prontos }));
+              }}
               onBlur={async () => {
                 if (description === task.description) return;
                 const ok = await patch({ description: description.trim() });
@@ -291,6 +300,7 @@ export function PersonalReminderPanel({
                 ownerId={task.owner_id}
                 taskId={task.id}
                 onChanged={() => startTransition(onChanged)}
+                incoming={colados}
               />
             </div>
           </section>

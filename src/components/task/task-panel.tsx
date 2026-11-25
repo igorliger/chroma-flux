@@ -29,7 +29,7 @@ import { DueDateField } from "@/components/task/due-date-field";
 import { RichText } from "@/components/rich-text";
 import { extractUrls } from "@/lib/links";
 import { LinkPreview } from "@/components/link-preview";
-import { formatBytes, validateFile } from "@/lib/attachments";
+import { filesFromClipboard, formatBytes, shrinkPastedImages, validateFile } from "@/lib/attachments";
 import { uploadAttachments } from "@/lib/upload-attachment";
 import {
   recurrenceFromTask,
@@ -112,6 +112,8 @@ export function TaskPanel({
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
   const [videoUrl, setVideoUrl] = useState(task.video_url ?? "");
+  // Imagem colada na descrição: vai para os anexos da tarefa.
+  const [colados, setColados] = useState<{ id: number; files: File[] } | null>(null);
   // Compartilhada (vários responsáveis): quem é responsável conclui a sua
   // parte; o botão mostra a parte dessa pessoa, não a tarefa inteira.
   const compartilhada = isSharedTask(task);
@@ -669,8 +671,20 @@ export function TaskPanel({
               value={description}
               disabled={!permissoes.edit}
               rows={4}
-              placeholder={permissoes.edit ? "Adicione mais contexto…" : "Sem descrição."}
+              placeholder={
+                permissoes.edit
+                  ? "Adicione mais contexto… (cole uma foto com Ctrl+V para anexar)"
+                  : "Sem descrição."
+              }
               onChange={(e) => setDescription(e.target.value)}
+              onPaste={(e) => {
+                if (!permissoes.edit) return;
+                const files = filesFromClipboard(e.clipboardData);
+                if (files.length === 0) return;
+                // Só a imagem: não cola texto nenhum. Com texto junto, o texto entra normalmente.
+                if (!e.clipboardData.getData("text/plain")) e.preventDefault();
+                void shrinkPastedImages(files).then((prontos) => setColados({ id: Date.now(), files: prontos }));
+              }}
               onBlur={async () => {
                 if (description === task.description) return;
                 const ok = await patch({ description: description.trim() });
@@ -693,6 +707,7 @@ export function TaskPanel({
                 canWrite={permissoes.edit}
                 currentUserId={currentUserId}
                 onChanged={() => startTransition(onChanged)}
+                incoming={colados}
               />
             </div>
           </section>
@@ -1140,7 +1155,17 @@ function AddComment({
         onChange={(e) => setBody(e.target.value)}
         rows={3}
         maxLength={5000}
-        placeholder="Escreva um comentário…"
+        placeholder="Escreva um comentário… (cole uma foto com Ctrl+V para anexar)"
+        onPaste={(e) => {
+          const files = filesFromClipboard(e.clipboardData);
+          if (files.length === 0) return;
+          if (!e.clipboardData.getData("text/plain")) e.preventDefault();
+          void shrinkPastedImages(files).then((prontos) => {
+            const recusado = prontos.map(validateFile).find(Boolean);
+            if (recusado) setError(recusado);
+            setPendentes((p) => [...p, ...prontos.filter((f) => !validateFile(f))]);
+          });
+        }}
         onKeyDown={(e) => {
           // Ctrl/Cmd + Enter envia, como na maioria dos apps de equipe.
           if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {

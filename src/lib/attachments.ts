@@ -88,3 +88,61 @@ export function validateFile(file: File): string | null {
   }
   return null;
 }
+
+/**
+ * Arquivos colados (Ctrl+V / colar do celular) — normalmente um print ou uma
+ * foto copiada. A área de transferência dá a todos o mesmo nome ("image.png"),
+ * então cada um ganha um nome com data e hora para não confundir na lista.
+ */
+export function filesFromClipboard(data: DataTransfer | null): File[] {
+  if (!data) return [];
+  const arquivos = Array.from(data.files ?? []);
+  if (arquivos.length === 0) {
+    for (const item of Array.from(data.items ?? [])) {
+      if (item.kind === "file") {
+        const f = item.getAsFile();
+        if (f) arquivos.push(f);
+      }
+    }
+  }
+  const agora = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  const carimbo = `${agora.getFullYear()}${p(agora.getMonth() + 1)}${p(agora.getDate())}-${p(agora.getHours())}${p(agora.getMinutes())}${p(agora.getSeconds())}`;
+  return arquivos.map((f, i) => {
+    if (!/^image\.(png|jpe?g|gif|webp)$/i.test(f.name)) return f;
+    const ext = f.name.split(".").pop() ?? "png";
+    const sufixo = arquivos.length > 1 ? `-${i + 1}` : "";
+    return new File([f], `imagem-colada-${carimbo}${sufixo}.${ext}`, { type: f.type, lastModified: f.lastModified });
+  });
+}
+
+/**
+ * Imagem colada maior que o limite (comum em print de tela inteira ou foto do
+ * celular): redesenha em JPEG, com no máximo 2560 px no lado maior, até caber.
+ * O que não é imagem, ou já cabe, passa como está — o limite continua valendo.
+ */
+export async function shrinkPastedImages(files: File[]): Promise<File[]> {
+  return Promise.all(
+    files.map(async (f) => {
+      if (f.size <= MAX_ATTACHMENT_BYTES || !f.type.startsWith("image/") || f.type === "image/gif") return f;
+      try {
+        const bitmap = await createImageBitmap(f);
+        let escala = Math.min(1, 2560 / Math.max(bitmap.width, bitmap.height));
+        for (let tentativa = 0; tentativa < 4; tentativa++) {
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(bitmap.width * escala);
+          canvas.height = Math.round(bitmap.height * escala);
+          canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+          const blob = await new Promise<Blob | null>((ok) => canvas.toBlob(ok, "image/jpeg", 0.85));
+          if (blob && blob.size <= MAX_ATTACHMENT_BYTES) {
+            return new File([blob], f.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
+          }
+          escala *= 0.75;
+        }
+      } catch {
+        // Navegador sem suporte: segue o arquivo original (e o limite avisa).
+      }
+      return f;
+    }),
+  );
+}

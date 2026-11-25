@@ -15,7 +15,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import { DueDateField } from "@/components/task/due-date-field";
-import { formatBytes, validateFile } from "@/lib/attachments";
+import { filesFromClipboard, formatBytes, shrinkPastedImages, validateFile } from "@/lib/attachments";
 import { createClient } from "@/lib/supabase/client";
 import { uploadPersonalAttachments } from "@/lib/upload-attachment";
 import { NO_RECURRENCE, type Recurrence } from "@/lib/recurrence";
@@ -75,8 +75,14 @@ export function NewPersonalReminderDialog({
 
   function escolherArquivos(lista: FileList | null) {
     if (!lista) return;
+    adicionarArquivos(Array.from(lista));
+    if (inputArquivo.current) inputArquivo.current.value = "";
+  }
+
+  /** Do seletor ou colados na descrição (Ctrl+V): entram na lista de anexos. */
+  function adicionarArquivos(lista: File[]) {
     const novos: File[] = [];
-    for (const arquivo of Array.from(lista)) {
+    for (const arquivo of lista) {
       const recusa = validateFile(arquivo);
       if (recusa) setErroArquivo(recusa);
       else novos.push(arquivo);
@@ -145,7 +151,13 @@ export function NewPersonalReminderDialog({
             id="reminder-description"
             name="description"
             rows={3}
-            placeholder="Detalhes, links…"
+            placeholder="Detalhes, links (cole uma foto com Ctrl+V para anexar)"
+            onPaste={(e) => {
+              const files = filesFromClipboard(e.clipboardData);
+              if (files.length === 0) return;
+              if (!e.clipboardData.getData("text/plain")) e.preventDefault();
+              void shrinkPastedImages(files).then(adicionarArquivos);
+            }}
           />
         </Field>
 
